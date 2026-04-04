@@ -6,14 +6,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
 import { auth } from "./firebase-config.js";
-import {
-  getCurrentWeekId,
-  getWeekData,
-  getClientProfile,
-  saveClientProfile,
-  getOrder,
-  saveOrder
-} from "./db.js";
+
 
 import {
   money,
