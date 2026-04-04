@@ -45,6 +45,7 @@ const els = {
   weekStatus: document.getElementById("weekStatus"),
   customerName: document.getElementById("customerName"),
   customerEmail: document.getElementById("customerEmail"),
+  lastUpdate: document.getElementById("lastUpdate"),
 
   pickupLocation: document.getElementById("pickupLocation"),
   productsList: document.getElementById("productsList"),
@@ -61,6 +62,7 @@ const els = {
   btnCloseReview: document.getElementById("btnCloseReview"),
   btnSubmitOrder: document.getElementById("btnSubmitOrder"),
   btnSaveOrder: document.getElementById("btnSaveOrder")
+  
 };
 
 const state = {
@@ -81,9 +83,11 @@ function setMessage(msg, isError = false) {
 
 function normalizeQty(value) {
   if (value === "" || value === null || value === undefined) return "";
-  const n = Number(String(value).replace(",", "."));
+  const cleaned = String(value).replace(",", ".").trim();
+  const n = Number(cleaned);
+
   if (Number.isNaN(n) || n < 0) return "";
-  return n;
+  return Number(n.toFixed(3));
 }
 
 function refreshSummary() {
@@ -160,6 +164,10 @@ async function loadAppData() {
   state.profile = await getClientProfile(state.uid);
 
   const order = await getOrder(state.weekId, state.uid);
+  
+  els.lastUpdate.textContent = order?.ultimaAtualizacao
+  ? new Date(order.ultimaAtualizacao).toLocaleString("pt-PT")
+  : "Sem registo";
 
   els.weekLabel.textContent = state.weekData?.meta?.label || state.weekId;
   setWeekStatus(els.weekStatus, state.weekData?.estado || "fechada");
@@ -231,8 +239,16 @@ async function handleLogin() {
 
 async function handleSave(submitState = "submetida") {
   if (!state.weekId || !state.uid) return;
+
+  if (!state.pickupLocation) {
+    alert("Escolhe um local de recolha antes de guardar a encomenda.");
+    return;
+  }
+
   const payload = buildOrderPayload(submitState);
   await saveOrder(state.weekId, state.uid, payload);
+
+  els.lastUpdate.textContent = new Date(payload.ultimaAtualizacao).toLocaleString("pt-PT");
   alert("Encomenda guardada com sucesso.");
 }
 
@@ -269,14 +285,14 @@ function bindEvents() {
   els.btnReview.addEventListener("click", openReview);
   els.btnCloseReview.addEventListener("click", () => hide(els.reviewModal));
 
-  els.btnSaveOrder.addEventListener("click", async () => {
-    await handleSave("submetida");
-  });
+els.btnSaveOrder.addEventListener("click", async () => {
+  await handleSave("rascunho");
+});
 
-  els.btnSubmitOrder.addEventListener("click", async () => {
-    await handleSave("submetida");
-    hide(els.reviewModal);
-  });
+els.btnSubmitOrder.addEventListener("click", async () => {
+  await handleSave("submetida");
+  hide(els.reviewModal);
+});
 }
 
 function initAuthObserver() {
