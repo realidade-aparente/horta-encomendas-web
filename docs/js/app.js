@@ -26,6 +26,40 @@ import {
   renderReview
 } from "./ui.js";
 
+function getCurrentWeekInfo() {
+  const now = new Date();
+
+  // copiar data sem horas
+  const localDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  // segunda-feira da semana atual
+  const day = localDate.getDay(); // 0=domingo, 1=segunda, ..., 6=sábado
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+
+  const monday = new Date(localDate);
+  monday.setDate(localDate.getDate() + diffToMonday);
+
+  // cálculo ISO week
+  const isoDate = new Date(Date.UTC(monday.getFullYear(), monday.getMonth(), monday.getDate()));
+  isoDate.setUTCDate(isoDate.getUTCDate() + 3);
+  const firstThursday = new Date(Date.UTC(isoDate.getUTCFullYear(), 0, 4));
+  const weekNumber = 1 + Math.round(
+    ((isoDate - firstThursday) / 86400000 - 3 + ((firstThursday.getUTCDay() + 6) % 7)) / 7
+  );
+
+  const yyyy = monday.getFullYear();
+  const mm = String(monday.getMonth() + 1).padStart(2, "0");
+  const dd = String(monday.getDate()).padStart(2, "0");
+  const weekId = `${yyyy}-${mm}-${dd}`;
+  const weekLabel = `Semana ${String(weekNumber).padStart(2, "0")} - ${weekId}`;
+
+  return {
+    weekId,
+    weekNumber,
+    weekLabel
+  };
+}
+
 const els = {
   secAuth: document.getElementById("secAuth"),
   secApp: document.getElementById("secApp"),
@@ -157,8 +191,8 @@ function buildOrderPayload(submitState = "submetida") {
 }
 
 async function loadAppData() {
-  state.weekId = await getCurrentWeekId();
-  if (!state.weekId) throw new Error("semanaAtual não definida");
+const currentWeek = getCurrentWeekInfo();
+state.weekId = currentWeek.weekId;
 
   state.weekData = await getWeekData(state.weekId);
   state.profile = await getClientProfile(state.uid);
@@ -169,7 +203,8 @@ async function loadAppData() {
   ? new Date(order.ultimaAtualizacao).toLocaleString("pt-PT")
   : "Sem registo";
 
-  els.weekLabel.textContent = state.weekData?.meta?.label || state.weekId;
+  const currentWeek = getCurrentWeekInfo();
+  els.weekLabel.textContent = currentWeek.weekLabel;
   setWeekStatus(els.weekStatus, state.weekData?.estado || "fechada");
 
   els.customerName.textContent = state.profile?.nome || "Cliente";
