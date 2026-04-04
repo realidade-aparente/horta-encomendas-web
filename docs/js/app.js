@@ -1,0 +1,307 @@
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+import { auth } from "./firebase-config.js";
+import {
+  getCurrentWeekId,
+  getWeekData,
+  getClientProfile,
+  saveClientProfile,
+  getOrder,
+  saveOrder
+} from "./db.js";
+
+import {
+  money,
+  show,
+  hide,
+  setWeekStatus,
+  renderPickupOptions,
+  renderProducts,
+  calculateSummary,
+  renderReview
+} from "./ui.js";
+
+const els = {
+  secAuth: document.getElementById("secAuth"),
+  secApp: document.getElementById("secApp"),
+  secClosed: document.getElementById("secClosed"),
+
+  authEmail: document.getElementById("authEmail"),
+  authPassword: document.getElementById("authPassword"),
+  regName: document.getElementById("regName"),
+  regPhone: document.getElementById("regPhone"),
+  registerExtra: document.getElementById("registerExtra"),
+  authMessage: document.getElementById("authMessage"),
+  btnLogin: document.getElementById("btnLogin"),
+  btnRegister: document.getElementById("btnRegister"),
+  btnLogout: document.getElementById("btnLogout"),
+
+  weekLabel: document.getElementById("weekLabel"),
+  weekStatus: document.getElementById("weekStatus"),
+  customerName: document.getElementById("customerName"),
+  customerEmail: document.getElementById("customerEmail"),
+
+  pickupLocation: document.getElementById("pickupLocation"),
+  productsList: document.getElementById("productsList"),
+  summaryLines: document.getElementById("summaryLines"),
+  summaryTotal: document.getElementById("summaryTotal"),
+
+  reviewModal: document.getElementById("reviewModal"),
+  reviewWeek: document.getElementById("reviewWeek"),
+  reviewCustomer: document.getElementById("reviewCustomer"),
+  reviewPickup: document.getElementById("reviewPickup"),
+  reviewItems: document.getElementById("reviewItems"),
+  reviewTotal: document.getElementById("reviewTotal"),
+  btnReview: document.getElementById("btnReview"),
+  btnCloseReview: document.getElementById("btnCloseReview"),
+  btnSubmitOrder: document.getElementById("btnSubmitOrder"),
+  btnSaveOrder: document.getElementById("btnSaveOrder")
+};
+
+const state = {
+  uid: null,
+  user: null,
+  profile: null,
+  weekId: null,
+  weekData: null,
+  products: {},
+  quantities: {},
+  pickupLocation: ""
+};
+
+function setMessage(msg, isError = false) {
+  els.authMessage.textContent = msg;
+  els.authMessage.style.color = isError ? "#b00020" : "#2f7d32";
+}
+
+function normalizeQty(value) {
+  if (value === "" || value === null || value === undefined) return "";
+  const n = Number(String(value).replace(",", "."));
+  if (Number.isNaN(n) || n < 0) return "";
+  return n;
+}
+
+function refreshSummary() {
+  const { lines, total } = calculateSummary(state.products, state.quantities);
+  els.summaryLines.textContent = `${lines} produtos`;
+  els.summaryTotal.textContent = `Total estimado: ${money(total)}`;
+}
+
+function renderAllProducts() {
+  renderProducts({
+    container: els.productsList,
+    products: state.products,
+    quantities: state.quantities,
+    isClosed: state.weekData?.estado !== "aberta",
+    onMinus: (productId) => {
+      const current = Number(state.quantities[productId] || 0);
+      const next = Math.max(0, current - 1);
+      if (next === 0) {
+        delete state.quantities[productId];
+      } else {
+        state.quantities[productId] = next;
+      }
+      renderAllProducts();
+      refreshSummary();
+    },
+    onPlus: (productId) => {
+      const current = Number(state.quantities[productId] || 0);
+      state.quantities[productId] = current + 1;
+      renderAllProducts();
+      refreshSummary();
+    },
+    onInput: (productId, value) => {
+      const normalized = normalizeQty(value);
+      if (normalized === "") {
+        delete state.quantities[productId];
+      } else {
+        state.quantities[productId] = normalized;
+      }
+      refreshSummary();
+    }
+  });
+}
+
+function buildOrderPayload(submitState = "submetida") {
+  const cleanItems = {};
+  for (const [productId, qty] of Object.entries(state.quantities)) {
+    const n = Number(qty || 0);
+    if (n > 0) cleanItems[productId] = n;
+  }
+
+  const { lines, total } = calculateSummary(state.products, cleanItems);
+
+  return {
+    clienteUid: state.uid,
+    email: state.user.email,
+    nomeCliente: state.profile?.nome || "",
+    origem: "web",
+    estado: submitState,
+    ultimaAtualizacao: new Date().toISOString(),
+    localRecolha: state.pickupLocation || "",
+    itens: cleanItems,
+    totais: {
+      valorEstimado: Number(total.toFixed(2)),
+      numeroLinhas: lines
+    }
+  };
+}
+
+async function loadAppData() {
+  state.weekId = await getCurrentWeekId();
+  if (!state.weekId) throw new Error("semanaAtual não definida");
+
+  state.weekData = await getWeekData(state.weekId);
+  state.profile = await getClientProfile(state.uid);
+
+  const order = await getOrder(state.weekId, state.uid);
+
+  els.weekLabel.textContent = state.weekData?.meta?.label || state.weekId;
+  setWeekStatus(els.weekStatus, state.weekData?.estado || "fechada");
+
+  els.customerName.textContent = state.profile?.nome || "Cliente";
+  els.customerEmail.textContent = state.user?.email || "";
+
+  state.products = state.weekData?.produtos || {};
+  state.quantities = order?.itens || {};
+  state.pickupLocation = order?.localRecolha || "";
+
+  const pickupOptions = state.weekData?.locaisRecolha || [
+    "Quinta",
+    "Mercado local",
+    "Entrega combinada"
+  ];
+
+  renderPickupOptions(els.pickupLocation, pickupOptions, state.pickupLocation);
+
+  if (state.weekData?.estado !== "aberta") {
+    show(els.secClosed);
+  } else {
+    hide(els.secClosed);
+  }
+
+  renderAllProducts();
+  refreshSummary();
+}
+
+async function handleRegister() {
+  const email = els.authEmail.value.trim();
+  const password = els.authPassword.value.trim();
+  const nome = els.regName.value.trim();
+  const telefone = els.regPhone.value.trim();
+
+  if (!nome) {
+    setMessage("Preenche o nome para criar conta.", true);
+    show(els.registerExtra);
+    return;
+  }
+
+  try {
+    const cred = await createUserWithEmailAndPassword(auth, email, password);
+    await saveClientProfile(cred.user.uid, {
+      email,
+      nome,
+      telefone,
+      ativo: true,
+      criadoEm: new Date().toISOString()
+    });
+    setMessage("Conta criada com sucesso.");
+  } catch (err) {
+    setMessage(err.message, true);
+  }
+}
+
+async function handleLogin() {
+  const email = els.authEmail.value.trim();
+  const password = els.authPassword.value.trim();
+
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+    setMessage("Sessão iniciada.");
+  } catch (err) {
+    show(els.registerExtra);
+    setMessage("Não foi possível entrar. Se ainda não tens conta, preenche o nome e cria conta.", true);
+  }
+}
+
+async function handleSave(submitState = "submetida") {
+  if (!state.weekId || !state.uid) return;
+  const payload = buildOrderPayload(submitState);
+  await saveOrder(state.weekId, state.uid, payload);
+  alert("Encomenda guardada com sucesso.");
+}
+
+function openReview() {
+  els.reviewWeek.textContent = state.weekData?.meta?.label || "";
+  els.reviewCustomer.textContent = state.profile?.nome || "";
+  els.reviewPickup.textContent = `Local de recolha: ${state.pickupLocation || "(não escolhido)"}`;
+  renderReview({
+    container: els.reviewItems,
+    products: state.products,
+    quantities: state.quantities
+  });
+
+  const { total } = calculateSummary(state.products, state.quantities);
+  els.reviewTotal.textContent = `Total estimado: ${money(total)}`;
+  show(els.reviewModal);
+}
+
+function bindEvents() {
+  els.btnLogin.addEventListener("click", handleLogin);
+  els.btnRegister.addEventListener("click", () => {
+    show(els.registerExtra);
+    handleRegister();
+  });
+
+  els.btnLogout.addEventListener("click", async () => {
+    await signOut(auth);
+  });
+
+  els.pickupLocation.addEventListener("change", (e) => {
+    state.pickupLocation = e.target.value;
+  });
+
+  els.btnReview.addEventListener("click", openReview);
+  els.btnCloseReview.addEventListener("click", () => hide(els.reviewModal));
+
+  els.btnSaveOrder.addEventListener("click", async () => {
+    await handleSave("submetida");
+  });
+
+  els.btnSubmitOrder.addEventListener("click", async () => {
+    await handleSave("submetida");
+    hide(els.reviewModal);
+  });
+}
+
+function initAuthObserver() {
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) {
+      state.uid = null;
+      state.user = null;
+      hide(els.secApp);
+      show(els.secAuth);
+      return;
+    }
+
+    state.uid = user.uid;
+    state.user = user;
+
+    try {
+      await loadAppData();
+      hide(els.secAuth);
+      show(els.secApp);
+    } catch (err) {
+      console.error(err);
+      alert("Erro ao carregar dados.");
+    }
+  });
+}
+
+bindEvents();
+initAuthObserver();

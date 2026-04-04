@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Encomendas da Horta</title>
+  <link rel="stylesheet" href="./css/style.css" />
+</head>
+<body>
+  <main class="app-shell">
+
+    <header class="app-header">
+      <h1>Encomendas da Horta</h1>
+      <p id="weekLabel">A carregar semana...</p>
+      <p id="weekStatus" class="status-pill">...</p>
+    </header>
+
+    <!-- AUTH -->
+    <section id="secAuth" class="card">
+      <h2>Entrar / Registar</h2>
+
+      <div class="form-group">
+        <label for="authEmail">Email</label>
+        <input id="authEmail" type="email" placeholder="nome@email.com" />
+      </div>
+
+      <div class="form-group">
+        <label for="authPassword">Palavra-passe</label>
+        <input id="authPassword" type="password" placeholder="Mínimo 6 caracteres" />
+      </div>
+
+      <div class="auth-actions">
+        <button id="btnLogin">Entrar</button>
+        <button id="btnRegister" class="secondary">Criar conta</button>
+      </div>
+
+      <div id="registerExtra" class="hidden">
+        <div class="form-group">
+          <label for="regName">Nome</label>
+          <input id="regName" type="text" placeholder="Nome do cliente" />
+        </div>
+
+        <div class="form-group">
+          <label for="regPhone">Telefone</label>
+          <input id="regPhone" type="tel" placeholder="Opcional" />
+        </div>
+      </div>
+
+      <p id="authMessage" class="message"></p>
+    </section>
+
+    <!-- APP -->
+    <section id="secApp" class="hidden">
+      <section class="card">
+        <div class="top-row">
+          <div>
+            <h2 id="customerName">Cliente</h2>
+            <p id="customerEmail">email@exemplo.com</p>
+          </div>
+          <button id="btnLogout" class="secondary">Sair</button>
+        </div>
+      </section>
+
+      <section id="secClosed" class="card hidden">
+        <h2>Encomendas encerradas</h2>
+        <p>O período de encomendas desta semana já encerrou.</p>
+        <p>Podes consultar a tua encomenda, mas não a podes alterar.</p>
+      </section>
+
+      <section class="card">
+        <div class="top-row wrap">
+          <h2>Local de recolha</h2>
+          <select id="pickupLocation"></select>
+        </div>
+        <p class="hint">Escolhe onde pretendes recolher a encomenda.</p>
+      </section>
+
+      <section class="card">
+        <h2>Produtos desta semana</h2>
+        <div id="productsList"></div>
+      </section>
+
+      <section class="summary-bar">
+        <div>
+          <strong id="summaryLines">0 produtos</strong>
+          <div id="summaryTotal">Total estimado: 0,00 €</div>
+        </div>
+        <div class="summary-actions">
+          <button id="btnReview" class="secondary">Resumo</button>
+          <button id="btnSaveOrder">Guardar</button>
+        </div>
+      </section>
+    </section>
+
+    <!-- MODAL RESUMO -->
+    <section id="reviewModal" class="modal hidden">
+      <div class="modal-card">
+        <h2>Resumo da encomenda</h2>
+        <p id="reviewWeek"></p>
+        <p id="reviewCustomer"></p>
+        <p id="reviewPickup"></p>
+
+        <div id="reviewItems"></div>
+
+        <p class="review-total" id="reviewTotal"></p>
+
+        <div class="modal-actions">
+          <button id="btnCloseReview" class="secondary">Voltar</button>
+          <button id="btnSubmitOrder">Submeter encomenda</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>
