@@ -6,7 +6,13 @@ import {
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
 import { auth } from "./firebase-config.js";
-
+import {
+  getWeekData,
+  getClientProfile,
+  saveClientProfile,
+  getOrder,
+  saveOrder
+} from "./db.js";
 
 import {
   money,
@@ -21,18 +27,14 @@ import {
 
 function getCurrentWeekInfo() {
   const now = new Date();
-
-  // copiar data sem horas
   const localDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-  // segunda-feira da semana atual
   const day = localDate.getDay(); // 0=domingo, 1=segunda, ..., 6=sábado
   const diffToMonday = day === 0 ? -6 : 1 - day;
 
   const monday = new Date(localDate);
   monday.setDate(localDate.getDate() + diffToMonday);
 
-  // cálculo ISO week
   const isoDate = new Date(Date.UTC(monday.getFullYear(), monday.getMonth(), monday.getDate()));
   isoDate.setUTCDate(isoDate.getUTCDate() + 3);
   const firstThursday = new Date(Date.UTC(isoDate.getUTCFullYear(), 0, 4));
@@ -89,7 +91,6 @@ const els = {
   btnCloseReview: document.getElementById("btnCloseReview"),
   btnSubmitOrder: document.getElementById("btnSubmitOrder"),
   btnSaveOrder: document.getElementById("btnSaveOrder")
-  
 };
 
 const state = {
@@ -224,18 +225,6 @@ async function loadAppData() {
   refreshSummary();
 }
 
-  renderPickupOptions(els.pickupLocation, pickupOptions, state.pickupLocation);
-
-  if (state.weekData?.estado !== "aberta") {
-    show(els.secClosed);
-  } else {
-    hide(els.secClosed);
-  }
-
-  renderAllProducts();
-  refreshSummary();
-}
-
 async function handleRegister() {
   const email = els.authEmail.value.trim();
   const password = els.authPassword.value.trim();
@@ -292,9 +281,10 @@ async function handleSave(submitState = "submetida") {
 }
 
 function openReview() {
-  els.reviewWeek.textContent = state.weekData?.meta?.label || "";
+  els.reviewWeek.textContent = els.weekLabel.textContent;
   els.reviewCustomer.textContent = state.profile?.nome || "";
   els.reviewPickup.textContent = `Local de recolha: ${state.pickupLocation || "(não escolhido)"}`;
+
   renderReview({
     container: els.reviewItems,
     products: state.products,
@@ -308,6 +298,7 @@ function openReview() {
 
 function bindEvents() {
   els.btnLogin.addEventListener("click", handleLogin);
+
   els.btnRegister.addEventListener("click", () => {
     show(els.registerExtra);
     handleRegister();
@@ -324,14 +315,14 @@ function bindEvents() {
   els.btnReview.addEventListener("click", openReview);
   els.btnCloseReview.addEventListener("click", () => hide(els.reviewModal));
 
-els.btnSaveOrder.addEventListener("click", async () => {
-  await handleSave("rascunho");
-});
+  els.btnSaveOrder.addEventListener("click", async () => {
+    await handleSave("rascunho");
+  });
 
-els.btnSubmitOrder.addEventListener("click", async () => {
-  await handleSave("submetida");
-  hide(els.reviewModal);
-});
+  els.btnSubmitOrder.addEventListener("click", async () => {
+    await handleSave("submetida");
+    hide(els.reviewModal);
+  });
 }
 
 function initAuthObserver() {
