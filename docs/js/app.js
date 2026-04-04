@@ -55,6 +55,18 @@ function getCurrentWeekInfo() {
   };
 }
 
+const EMAILJS_PUBLIC_KEY = "hgrb7V-u6GGGCYUTa";
+const EMAILJS_SERVICE_ID = "service_ja0vggr";
+const EMAILJS_TEMPLATE_CLIENTE = "template_08hxlen";
+
+function initEmailJS() {
+  if (window.emailjs) {
+    window.emailjs.init({
+      publicKey: EMAILJS_PUBLIC_KEY
+    });
+  }
+}
+
 const els = {
   secAuth: document.getElementById("secAuth"),
   secApp: document.getElementById("secApp"),
@@ -157,6 +169,24 @@ function renderAllProducts() {
       refreshSummary();
     }
   });
+}
+
+function buildOrderLinesText() {
+  const lines = [];
+
+  for (const [productId, qtyRaw] of Object.entries(state.quantities || {})) {
+    const qty = Number(qtyRaw || 0);
+    const product = state.products[productId];
+
+    if (!product || qty <= 0) continue;
+
+    const subtotal = qty * Number(product.preco || 0);
+    lines.push(
+      `${qty} x ${product.nome} (${product.unidade}) — ${money(subtotal)}`
+    );
+  }
+
+  return lines.length > 0 ? lines.join("\n") : "Sem produtos selecionados.";
 }
 
 function buildOrderPayload(submitState = "submetida") {
@@ -265,6 +295,30 @@ async function handleLogin() {
   }
 }
 
+async function sendClientConfirmationEmail(payload) {
+  if (!window.emailjs) {
+    console.warn("EmailJS não está disponível.");
+    return;
+  }
+
+  const templateParams = {
+    to_email: state.user.email,
+    to_name: state.profile?.nome || "Cliente",
+    week_label: state.weekData?.meta?.label || state.weekId,
+    pickup_location: payload.localRecolha || "",
+    order_lines: buildOrderLinesText(),
+    order_total: money(payload.totais?.valorEstimado || 0),
+    updated_at: new Date(payload.ultimaAtualizacao).toLocaleString("pt-PT"),
+    order_status: payload.estado || "submetida"
+  };
+
+  await window.emailjs.send(
+    EMAILJS_SERVICE_ID,
+    EMAILJS_TEMPLATE_CLIENTE,
+    templateParams
+  );
+}
+
 async function handleSave(submitState = "submetida") {
   if (!state.weekId || !state.uid) return;
 
@@ -276,8 +330,22 @@ async function handleSave(submitState = "submetida") {
   const payload = buildOrderPayload(submitState);
   await saveOrder(state.weekId, state.uid, payload);
 
+  if (submitState === "submetida") {
+    try {
+      await sendClientConfirmationEmail(payload);
+    } catch (err) {
+      console.error("Erro ao enviar email:", err);
+      alert("A encomenda foi submetida, mas houve um erro ao enviar o email de confirmação.");
+    }
+  }
+
   els.lastUpdate.textContent = new Date(payload.ultimaAtualizacao).toLocaleString("pt-PT");
-  alert("Encomenda guardada com sucesso.");
+
+  if (submitState === "rascunho") {
+    alert("Rascunho guardado com sucesso.");
+  } else {
+    alert("Encomenda submetida com sucesso. Foi enviado um email de confirmação.");
+  }
 }
 
 function openReview() {
@@ -349,5 +417,6 @@ function initAuthObserver() {
   });
 }
 
+initEmailJS();
 bindEvents();
 initAuthObserver();
