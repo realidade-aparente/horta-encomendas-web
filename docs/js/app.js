@@ -191,19 +191,18 @@ function buildOrderPayload(submitState = "submetida") {
 }
 
 async function loadAppData() {
-const currentWeek = getCurrentWeekInfo();
-state.weekId = currentWeek.weekId;
+  const currentWeek = getCurrentWeekInfo();
+  state.weekId = currentWeek.weekId;
 
   state.weekData = await getWeekData(state.weekId);
   state.profile = await getClientProfile(state.uid);
 
   const order = await getOrder(state.weekId, state.uid);
-  
-  els.lastUpdate.textContent = order?.ultimaAtualizacao
-  ? new Date(order.ultimaAtualizacao).toLocaleString("pt-PT")
-  : "Sem registo";
 
-  const currentWeek = getCurrentWeekInfo();
+  els.lastUpdate.textContent = order?.ultimaAtualizacao
+    ? new Date(order.ultimaAtualizacao).toLocaleString("pt-PT")
+    : "Sem registo";
+
   els.weekLabel.textContent = currentWeek.weekLabel;
   setWeekStatus(els.weekStatus, state.weekData?.estado || "fechada");
 
@@ -219,6 +218,18 @@ state.weekId = currentWeek.weekId;
     "Mercado local",
     "Entrega combinada"
   ];
+
+  renderPickupOptions(els.pickupLocation, pickupOptions, state.pickupLocation);
+
+  if (state.weekData?.estado !== "aberta") {
+    show(els.secClosed);
+  } else {
+    hide(els.secClosed);
+  }
+
+  renderAllProducts();
+  refreshSummary();
+}
 
   renderPickupOptions(els.pickupLocation, pickupOptions, state.pickupLocation);
 
