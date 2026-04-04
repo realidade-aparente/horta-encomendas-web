@@ -13,8 +13,19 @@ export async function getCurrentWeekId() {
 }
 
 export async function getWeekData(weekId) {
-  const snap = await get(ref(db, `semanas/${weekId}`));
-  return snap.exists() ? snap.val() : null;
+  const [metaSnap, estadoSnap, locaisSnap, produtosSnap] = await Promise.all([
+    get(ref(db, `semanas/${weekId}/meta`)),
+    get(ref(db, `semanas/${weekId}/estado`)),
+    get(ref(db, `semanas/${weekId}/locaisRecolha`)),
+    get(ref(db, `semanas/${weekId}/produtos`))
+  ]);
+
+  return {
+    meta: metaSnap.exists() ? metaSnap.val() : {},
+    estado: estadoSnap.exists() ? estadoSnap.val() : "fechada",
+    locaisRecolha: locaisSnap.exists() ? locaisSnap.val() : [],
+    produtos: produtosSnap.exists() ? produtosSnap.val() : {}
+  };
 }
 
 export async function getClientProfile(uid) {
