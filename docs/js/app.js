@@ -266,7 +266,6 @@ async function loadAppData() {
   renderAllProducts();
   refreshSummary();
 }
-}
 
 async function handleRegister() {
   const email = els.authEmail.value.trim();
