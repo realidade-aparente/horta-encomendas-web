@@ -3,13 +3,13 @@ import { getAuth } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth
 import { getDatabase } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBOknpWov10K1B2VqSJ4BJZ3Fp2u96D-uQ",
-  authDomain: "horta-encomendas.firebaseapp.com",
-  databaseURL: "https://horta-encomendas-default-rtdb.europe-west1.firebasedatabase.app/",
-  projectId: "horta-encomendas",
-  storageBucket: "horta-encomendas.firebasestorage.app",
-  messagingSenderId: "1024254346717",
-  appId: "1:1024254346717:web:c09b4f848fbaaa5a6e2234"
+  apiKey: "AIzaSyBFheupvmKTD5vCV29p_jNDeIJpM7tccX8",
+  authDomain: "horta-encomendas-us.firebaseapp.com",
+  databaseURL: "https://horta-encomendas-us-default-rtdb.firebaseio.com",
+  projectId: "horta-encomendas-us",
+  storageBucket: "horta-encomendas-us.firebasestorage.app",
+  messagingSenderId: "411853672301",
+  appId: "1:411853672301:web:79123e9f6bf2aa8733d464"
 };
 
 const app = initializeApp(firebaseConfig);
