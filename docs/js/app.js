@@ -141,7 +141,7 @@ function renderAllProducts() {
     container: els.productsList,
     products: state.products,
     quantities: state.quantities,
-    isClosed: state.weekData?.estado !== "aberta",
+    isClosed: state.weekData?.estado !== "aberta" || !state.user,
     onMinus: (productId) => {
       const current = Number(state.quantities[productId] || 0);
       const next = Math.max(0, current - 1);
@@ -219,23 +219,11 @@ async function loadAppData() {
   state.weekId = currentWeek.weekId;
 
   state.weekData = await getWeekData(state.weekId);
-  state.profile = await getClientProfile(state.uid);
-
-  const order = await getOrder(state.weekId, state.uid);
-
-  els.lastUpdate.textContent = order?.ultimaAtualizacao
-    ? new Date(order.ultimaAtualizacao).toLocaleString("pt-PT")
-    : "Sem registo";
 
   els.weekLabel.textContent = currentWeek.weekLabel;
   setWeekStatus(els.weekStatus, state.weekData?.estado || "fechada");
 
-  els.customerName.textContent = state.profile?.nome || "Cliente";
-  els.customerEmail.textContent = state.user?.email || "";
-
   state.products = state.weekData?.produtos || {};
-  state.quantities = order?.itens || {};
-  state.pickupLocation = order?.localRecolha || "";
 
   const pickupOptions = state.weekData?.locaisRecolha || [
     "Quinta",
@@ -243,8 +231,32 @@ async function loadAppData() {
     "Entrega combinada"
   ];
 
-  renderPickupOptions(els.pickupLocation, pickupOptions, state.pickupLocation);
+  if (state.user && state.uid) {
+    state.profile = await getClientProfile(state.uid);
+    const order = await getOrder(state.weekId, state.uid);
 
+    els.customerName.textContent = state.profile?.nome || "Cliente";
+    els.customerEmail.textContent = state.user?.email || "";
+
+    state.quantities = order?.itens || {};
+    state.pickupLocation = order?.localRecolha || "";
+
+    els.lastUpdate.textContent = order?.ultimaAtualizacao
+      ? new Date(order.ultimaAtualizacao).toLocaleString("pt-PT")
+      : "Sem registo";
+  } else {
+    state.profile = null;
+    state.quantities = {};
+    state.pickupLocation = "";
+    els.customerName.textContent = "Visitante";
+    els.customerEmail.textContent = "Inicia sessão para guardar a encomenda";
+    els.lastUpdate.textContent = "Sem registo";
+  }
+
+  renderPickupOptions(els.pickupLocation, pickupOptions, state.pickupLocation);
+  
+  els.pickupLocation.disabled = !state.user || state.weekData?.estado !== "aberta";
+  
   if (state.weekData?.estado !== "aberta") {
     show(els.secClosed);
   } else {
@@ -253,6 +265,7 @@ async function loadAppData() {
 
   renderAllProducts();
   refreshSummary();
+}
 }
 
 async function handleRegister() {
@@ -320,6 +333,10 @@ async function sendClientConfirmationEmail(payload) {
 }
 
 async function handleSave(submitState = "submetida") {
+  if (!state.user || !state.uid) {
+  alert("Inicia sessão ou cria conta para guardar ou submeter a encomenda.");
+  return;
+}
   if (!state.weekId || !state.uid) return;
 
   if (!state.pickupLocation) {
@@ -398,8 +415,16 @@ function initAuthObserver() {
     if (!user) {
       state.uid = null;
       state.user = null;
-      hide(els.secApp);
-      show(els.secAuth);
+
+      try {
+        await loadAppData();
+        show(els.secAuth);
+        show(els.secApp);
+      } catch (err) {
+        console.error(err);
+        alert("Erro ao carregar dados.");
+      }
+
       return;
     }
 
