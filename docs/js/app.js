@@ -260,11 +260,11 @@ function buildOrderPayload(submitState = "submetida") {
 
 async function loadAppData() {
   const currentWeek = getCurrentWeekInfo();
-  state.weekId = currentWeek.weekId;
+  state.weekId = "2026-04-06";
 
   state.weekData = await getWeekData(state.weekId);
 
-  els.weekLabel.textContent = currentWeek.weekLabel;
+  els.weekLabel.textContent = "Semana 15 - 2026-04-06";
   setWeekStatus(els.weekStatus, state.weekData?.estado || "fechada");
 
   state.products = state.weekData?.produtos || {};
