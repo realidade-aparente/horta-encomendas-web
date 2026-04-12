@@ -102,7 +102,7 @@ const els = {
   btnReview: document.getElementById("btnReview"),
   btnCloseReview: document.getElementById("btnCloseReview"),
   btnSubmitOrder: document.getElementById("btnSubmitOrder"),
-  btnSaveOrder: document.getElementById("btnSaveOrder")
+  btnSaveOrder: document.getElementById("btnSaveOrder"),
   orderNotes: document.getElementById("orderNotes"),
 };
 
