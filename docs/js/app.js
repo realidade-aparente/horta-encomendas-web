@@ -59,6 +59,10 @@ const EMAILJS_PUBLIC_KEY = "hgrb7V-u6GGGCYUTa";
 const EMAILJS_SERVICE_ID = "service_ja0vggr";
 const EMAILJS_TEMPLATE_CLIENTE = "template_08hxlen";
 
+// MODO TESTE PROVISÓRIO
+const TEST_WEEK_ID = "2026-04-06";
+const TEST_WEEK_LABEL = "Semana 15 - 2026-04-06";
+
 function initEmailJS() {
   if (window.emailjs) {
     window.emailjs.init({
@@ -113,9 +117,9 @@ const state = {
   weekId: null,
   weekData: null,
   products: {},
- items: {},
- pickupLocation: "",
- notasEncomenda: ""
+  items: {},
+  pickupLocation: "",
+  notasEncomenda: ""
 };
 
 function setMessage(msg, isError = false) {
@@ -259,20 +263,31 @@ function buildOrderPayload(submitState = "submetida") {
 }
 
 async function loadAppData() {
-  const currentWeek = getCurrentWeekInfo();
-  state.weekId = "2026-04-06";
+  getCurrentWeekInfo();
 
+  state.weekId = TEST_WEEK_ID;
   state.weekData = await getWeekData(state.weekId);
 
-  els.weekLabel.textContent = "Semana 15 - 2026-04-06";
-  setWeekStatus(els.weekStatus, state.weekData?.estado || "fechada");
+  state.weekData = {
+    ...(state.weekData || {}),
+    estado: "aberta",
+    meta: {
+      ...(state.weekData?.meta || {}),
+      label: TEST_WEEK_LABEL
+    }
+  };
+
+  els.weekLabel.textContent = TEST_WEEK_LABEL;
+  setWeekStatus(els.weekStatus, "aberta");
 
   state.products = state.weekData?.produtos || {};
 
   const pickupOptions = state.weekData?.locaisRecolha || [
-    "Quinta",
-    "Mercado local",
-    "Entrega combinada"
+    "Na quinta – quinta-feira",
+    "Na Verdizela – quinta-feira",
+    "Em Quinta do Anjo – quinta-feira",
+    "Na quinta – sábado",
+    "Em Almada – sábado"
   ];
 
   if (state.user && state.uid) {
@@ -282,10 +297,10 @@ async function loadAppData() {
     els.customerName.textContent = state.profile?.nome || "Cliente";
     els.customerEmail.textContent = state.user?.email || "";
 
-	state.items = order?.itens || {};
-	state.pickupLocation = order?.localRecolha || "";
-	state.notasEncomenda = order?.notasEncomenda || "";
-	els.orderNotes.value = state.notasEncomenda;
+    state.items = order?.itens || {};
+    state.pickupLocation = order?.localRecolha || "";
+    state.notasEncomenda = order?.notasEncomenda || "";
+    els.orderNotes.value = state.notasEncomenda;
 
     els.lastUpdate.textContent = order?.ultimaAtualizacao
       ? new Date(order.ultimaAtualizacao).toLocaleString("pt-PT")
@@ -293,20 +308,19 @@ async function loadAppData() {
   } else {
     state.profile = null;
     state.items = {};
-	state.pickupLocation = "";
-	state.notasEncomenda = "";
-	els.orderNotes.value = "";
+    state.pickupLocation = "";
+    state.notasEncomenda = "";
+    els.orderNotes.value = "";
     els.customerName.textContent = "Visitante";
     els.customerEmail.textContent = "Inicia sessão para guardar a encomenda";
     els.lastUpdate.textContent = "Sem registo";
   }
 
   renderPickupOptions(els.pickupLocation, pickupOptions, state.pickupLocation);
-  
-els.pickupLocation.disabled = !state.user;
-els.orderNotes.disabled = !state.user;
-hide(els.secClosed);
-  }
+
+  els.pickupLocation.disabled = !state.user;
+  els.orderNotes.disabled = !state.user;
+  hide(els.secClosed);
 
   renderAllProducts();
   refreshSummary();
@@ -378,9 +392,9 @@ async function sendClientConfirmationEmail(payload) {
 
 async function handleSave(submitState = "submetida") {
   if (!state.user || !state.uid) {
-  alert("Inicia sessão ou cria conta para guardar ou submeter a encomenda.");
-  return;
-}
+    alert("Inicia sessão ou cria conta para guardar ou submeter a encomenda.");
+    return;
+  }
   if (!state.weekId || !state.uid) return;
 
   if (!state.pickupLocation) {
@@ -415,11 +429,11 @@ function openReview() {
   els.reviewPickup.textContent = `Local de recolha: ${state.pickupLocation || "(não escolhido)"}`;
 
   renderReview({
-  container: els.reviewItems,
-  products: state.products,
-  items: state.items,
-  notasEncomenda: state.notasEncomenda
-});
+    container: els.reviewItems,
+    products: state.products,
+    items: state.items,
+    notasEncomenda: state.notasEncomenda
+  });
 
   const { total } = calculateSummary(state.products, state.items);
   els.reviewTotal.textContent = `Total estimado: ${money(total)}`;
@@ -453,8 +467,9 @@ function bindEvents() {
     await handleSave("submetida");
     hide(els.reviewModal);
   });
+
   els.orderNotes.addEventListener("input", (e) => {
-  state.notasEncomenda = String(e.target.value || "").slice(0, 100);
+    state.notasEncomenda = String(e.target.value || "").slice(0, 100);
   });
 }
 
