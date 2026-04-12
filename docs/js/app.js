@@ -143,7 +143,7 @@ function renderAllProducts() {
     container: els.productsList,
     products: state.products,
     items: state.items,
-    isClosed: state.weekData?.estado !== "aberta" || !state.user,
+    isClosed: !state.user,
     onMinus: (productId) => {
       const current = Number(state.items[productId]?.quantidade || 0);
       const next = Math.max(0, current - 1);
@@ -303,13 +303,9 @@ async function loadAppData() {
 
   renderPickupOptions(els.pickupLocation, pickupOptions, state.pickupLocation);
   
-  els.pickupLocation.disabled = !state.user || state.weekData?.estado !== "aberta";
-  els.orderNotes.disabled = !state.user || state.weekData?.estado !== "aberta";
-  
-  if (state.weekData?.estado !== "aberta") {
-    show(els.secClosed);
-  } else {
-    hide(els.secClosed);
+els.pickupLocation.disabled = !state.user;
+els.orderNotes.disabled = !state.user;
+hide(els.secClosed);
   }
 
   renderAllProducts();
