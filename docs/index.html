@@ -25,8 +25,12 @@
       </div>
 
       <div class="form-group">
-        <label for="authPassword">Palavra-passe</label>
-        <input id="authPassword" type="password" placeholder="Mínimo 6 caracteres" />
+        <label for="authPassword">Palavra-passe / PIN</label>
+		<input id="authPassword" type="password" placeholder="Entre 4 e 10 caracteres" />
+		<p class="hint">
+			Define uma palavra-passe para entrares mais tarde e acederes à tua encomenda.
+			Pode ser um PIN. Aceita números, letras e símbolos do teclado.
+		</p>
       </div>
 
       <div class="auth-actions">
@@ -83,6 +87,20 @@
         <h2>Produtos desta semana</h2>
         <div id="productsList"></div>
       </section>
+
+	  <section class="card">
+		<h2>Notas para a encomenda</h2>
+		<div class="form-group">
+			<label for="orderNotes">Notas gerais</label>
+			<textarea
+			id="orderNotes"
+			maxlength="100"
+			rows="3"
+			placeholder="Ex.: se possível sem cebolas, cabaz para oferecer, etc. (máx. 100 caracteres)"
+			></textarea>
+		</div>
+		<p class="hint">Máximo 100 caracteres.</p>
+	  </section>
 
       <section class="summary-bar">
         <div>

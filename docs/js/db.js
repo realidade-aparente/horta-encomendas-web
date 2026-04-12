@@ -49,3 +49,7 @@ export async function saveOrder(weekId, uid, payload) {
 export async function patchOrder(weekId, uid, payload) {
   await update(ref(db, `semanas/${weekId}/encomendas/${uid}`), payload);
 }
+
+export async function deleteOrder(weekId, uid) {
+  await set(ref(db, `semanas/${weekId}/encomendas/${uid}`), null);
+}

@@ -182,3 +182,46 @@ button:not(.secondary) {
   font-weight: 700;
   margin-top: 16px;
 }
+
+textarea {
+  width: 100%;
+  font-size: 16px;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+  padding: 10px 12px;
+  background: #fff;
+  resize: vertical;
+  font-family: Arial, sans-serif;
+}
+
+.product-extra {
+  margin-top: 6px;
+  color: #555;
+  font-size: 14px;
+}
+
+.product-comment {
+  margin-top: 6px;
+  color: #7a5a00;
+  font-size: 14px;
+  font-style: italic;
+}
+
+.note-row {
+  margin-top: 10px;
+}
+
+.note-input {
+  width: 100%;
+  min-height: 40px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+
+.char-counter {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #666;
+}

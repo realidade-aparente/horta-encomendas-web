@@ -103,6 +103,7 @@ const els = {
   btnCloseReview: document.getElementById("btnCloseReview"),
   btnSubmitOrder: document.getElementById("btnSubmitOrder"),
   btnSaveOrder: document.getElementById("btnSaveOrder")
+  orderNotes: document.getElementById("orderNotes"),
 };
 
 const state = {
@@ -112,8 +113,9 @@ const state = {
   weekId: null,
   weekData: null,
   products: {},
-  quantities: {},
-  pickupLocation: ""
+ items: {},
+ pickupLocation: "",
+ notasEncomenda: ""
 };
 
 function setMessage(msg, isError = false) {
@@ -131,7 +133,7 @@ function normalizeQty(value) {
 }
 
 function refreshSummary() {
-  const { lines, total } = calculateSummary(state.products, state.quantities);
+  const { lines, total } = calculateSummary(state.products, state.items);
   els.summaryLines.textContent = `${lines} produtos`;
   els.summaryTotal.textContent = `Total estimado: ${money(total)}`;
 }
@@ -140,33 +142,59 @@ function renderAllProducts() {
   renderProducts({
     container: els.productsList,
     products: state.products,
-    quantities: state.quantities,
+    items: state.items,
     isClosed: state.weekData?.estado !== "aberta" || !state.user,
     onMinus: (productId) => {
-      const current = Number(state.quantities[productId] || 0);
+      const current = Number(state.items[productId]?.quantidade || 0);
       const next = Math.max(0, current - 1);
+
       if (next === 0) {
-        delete state.quantities[productId];
+        delete state.items[productId];
       } else {
-        state.quantities[productId] = next;
+        state.items[productId] = {
+          quantidade: next,
+          nota: state.items[productId]?.nota || ""
+        };
       }
+
       renderAllProducts();
       refreshSummary();
     },
     onPlus: (productId) => {
-      const current = Number(state.quantities[productId] || 0);
-      state.quantities[productId] = current + 1;
+      const current = Number(state.items[productId]?.quantidade || 0);
+      state.items[productId] = {
+        quantidade: current + 1,
+        nota: state.items[productId]?.nota || ""
+      };
+
       renderAllProducts();
       refreshSummary();
     },
-    onInput: (productId, value) => {
+    onInputQty: (productId, value) => {
       const normalized = normalizeQty(value);
+
       if (normalized === "") {
-        delete state.quantities[productId];
+        delete state.items[productId];
       } else {
-        state.quantities[productId] = normalized;
+        state.items[productId] = {
+          quantidade: normalized,
+          nota: state.items[productId]?.nota || ""
+        };
       }
+
       refreshSummary();
+    },
+    onInputNote: (productId, value) => {
+      const cleaned = String(value || "").slice(0, 20);
+
+      if (!state.items[productId]) {
+        state.items[productId] = {
+          quantidade: 0,
+          nota: cleaned
+        };
+      } else {
+        state.items[productId].nota = cleaned;
+      }
     }
   });
 }
@@ -174,16 +202,23 @@ function renderAllProducts() {
 function buildOrderLinesText() {
   const lines = [];
 
-  for (const [productId, qtyRaw] of Object.entries(state.quantities || {})) {
-    const qty = Number(qtyRaw || 0);
+  for (const [productId, item] of Object.entries(state.items || {})) {
+    const qty = Number(item?.quantidade || 0);
+    const note = item?.nota || "";
     const product = state.products[productId];
 
     if (!product || qty <= 0) continue;
 
     const subtotal = qty * Number(product.preco || 0);
+    const noteText = note ? ` | Nota: ${note}` : "";
+
     lines.push(
-      `${qty} x ${product.nome} (${product.unidade}) — ${money(subtotal)}`
+      `${qty} x ${product.nome} (${product.unidade}) — ${money(subtotal)}${noteText}`
     );
+  }
+
+  if (state.notasEncomenda) {
+    lines.push(`\nNotas da encomenda: ${state.notasEncomenda}`);
   }
 
   return lines.length > 0 ? lines.join("\n") : "Sem produtos selecionados.";
@@ -191,9 +226,17 @@ function buildOrderLinesText() {
 
 function buildOrderPayload(submitState = "submetida") {
   const cleanItems = {};
-  for (const [productId, qty] of Object.entries(state.quantities)) {
-    const n = Number(qty || 0);
-    if (n > 0) cleanItems[productId] = n;
+
+  for (const [productId, item] of Object.entries(state.items || {})) {
+    const quantidade = Number(item?.quantidade || 0);
+    const nota = String(item?.nota || "").slice(0, 20);
+
+    if (quantidade > 0) {
+      cleanItems[productId] = {
+        quantidade,
+        nota
+      };
+    }
   }
 
   const { lines, total } = calculateSummary(state.products, cleanItems);
@@ -206,6 +249,7 @@ function buildOrderPayload(submitState = "submetida") {
     estado: submitState,
     ultimaAtualizacao: new Date().toISOString(),
     localRecolha: state.pickupLocation || "",
+    notasEncomenda: String(state.notasEncomenda || "").slice(0, 100),
     itens: cleanItems,
     totais: {
       valorEstimado: Number(total.toFixed(2)),
@@ -238,16 +282,20 @@ async function loadAppData() {
     els.customerName.textContent = state.profile?.nome || "Cliente";
     els.customerEmail.textContent = state.user?.email || "";
 
-    state.quantities = order?.itens || {};
-    state.pickupLocation = order?.localRecolha || "";
+	state.items = order?.itens || {};
+	state.pickupLocation = order?.localRecolha || "";
+	state.notasEncomenda = order?.notasEncomenda || "";
+	els.orderNotes.value = state.notasEncomenda;
 
     els.lastUpdate.textContent = order?.ultimaAtualizacao
       ? new Date(order.ultimaAtualizacao).toLocaleString("pt-PT")
       : "Sem registo";
   } else {
     state.profile = null;
-    state.quantities = {};
-    state.pickupLocation = "";
+    state.items = {};
+	state.pickupLocation = "";
+	state.notasEncomenda = "";
+	els.orderNotes.value = "";
     els.customerName.textContent = "Visitante";
     els.customerEmail.textContent = "Inicia sessão para guardar a encomenda";
     els.lastUpdate.textContent = "Sem registo";
@@ -256,6 +304,7 @@ async function loadAppData() {
   renderPickupOptions(els.pickupLocation, pickupOptions, state.pickupLocation);
   
   els.pickupLocation.disabled = !state.user || state.weekData?.estado !== "aberta";
+  els.orderNotes.disabled = !state.user || state.weekData?.estado !== "aberta";
   
   if (state.weekData?.estado !== "aberta") {
     show(els.secClosed);
@@ -370,12 +419,13 @@ function openReview() {
   els.reviewPickup.textContent = `Local de recolha: ${state.pickupLocation || "(não escolhido)"}`;
 
   renderReview({
-    container: els.reviewItems,
-    products: state.products,
-    quantities: state.quantities
-  });
+  container: els.reviewItems,
+  products: state.products,
+  items: state.items,
+  notasEncomenda: state.notasEncomenda
+});
 
-  const { total } = calculateSummary(state.products, state.quantities);
+  const { total } = calculateSummary(state.products, state.items);
   els.reviewTotal.textContent = `Total estimado: ${money(total)}`;
   show(els.reviewModal);
 }
@@ -406,6 +456,9 @@ function bindEvents() {
   els.btnSubmitOrder.addEventListener("click", async () => {
     await handleSave("submetida");
     hide(els.reviewModal);
+  });
+  els.orderNotes.addEventListener("input", (e) => {
+  state.notasEncomenda = String(e.target.value || "").slice(0, 100);
   });
 }
 

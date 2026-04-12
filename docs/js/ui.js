@@ -30,11 +30,12 @@ export function renderPickupOptions(selectEl, options = [], selectedValue = "") 
 export function renderProducts({
   container,
   products,
-  quantities,
+  items,
   isClosed,
   onMinus,
-  onInput,
-  onPlus
+  onInputQty,
+  onPlus,
+  onInputNote
 }) {
   container.innerHTML = "";
 
@@ -46,15 +47,49 @@ export function renderProducts({
 
   for (const [productId, product] of sorted) {
     if (product.ativo === false) continue;
+    if (product.visivelCliente === false) continue;
+    if (product.tipoAtividade === "i") continue;
 
-    const qty = quantities[productId] ?? "";
+    const item = items[productId] || {};
+    const qty = item.quantidade ?? "";
+    const note = item.nota ?? "";
+
+    const gramsText = product.quantidadeComercializacaoGr
+      ? ` • ${product.quantidadeComercializacaoGr}g`
+      : "";
+
+    const originText = product.origem
+      ? `<div class="product-extra">Origem: ${product.origem}</div>`
+      : "";
+
+    const commentText = product.comentario
+      ? `<div class="product-comment">${product.comentario}</div>`
+      : "";
+
+    const noteField = product.aceitaNotaCliente
+      ? `
+        <div class="note-row">
+          <input
+            class="note-input"
+            type="text"
+            maxlength="20"
+            placeholder="Nota curta (máx. 20)"
+            value="${escapeHtml(note)}"
+            ${isClosed ? "disabled" : ""}
+          />
+          <div class="char-counter">${String(note).length}/20</div>
+        </div>
+      `
+      : "";
 
     const card = document.createElement("div");
     card.className = "product-card";
 
     card.innerHTML = `
       <div class="product-title">${product.nome}</div>
-      <div class="product-meta">${product.unidade} • ${money(product.preco)}</div>
+      <div class="product-meta">${product.unidade}${gramsText} • ${money(product.preco)}</div>
+      ${originText}
+      ${commentText}
       <div class="qty-row">
         <button class="qty-btn" data-action="minus" ${isClosed ? "disabled" : ""}>-</button>
         <input
@@ -68,26 +103,38 @@ export function renderProducts({
         />
         <button class="qty-btn" data-action="plus" ${isClosed ? "disabled" : ""}>+</button>
       </div>
+      ${noteField}
     `;
 
     const btnMinus = card.querySelector('[data-action="minus"]');
     const btnPlus = card.querySelector('[data-action="plus"]');
-    const input = card.querySelector(".qty-input");
+    const qtyInput = card.querySelector(".qty-input");
+    const noteInput = card.querySelector(".note-input");
 
     btnMinus?.addEventListener("click", () => onMinus(productId));
     btnPlus?.addEventListener("click", () => onPlus(productId));
-    input?.addEventListener("input", (e) => onInput(productId, e.target.value));
+    qtyInput?.addEventListener("input", (e) => onInputQty(productId, e.target.value));
+    noteInput?.addEventListener("input", (e) => onInputNote(productId, e.target.value));
 
     container.appendChild(card);
   }
 }
 
-export function calculateSummary(products, quantities) {
+function escapeHtml(value = "") {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+export function calculateSummary(products, items) {
   let total = 0;
   let lines = 0;
 
-  for (const [productId, qtyRaw] of Object.entries(quantities || {})) {
-    const qty = Number(qtyRaw || 0);
+  for (const [productId, item] of Object.entries(items || {})) {
+    const qty = Number(item?.quantidade || 0);
     if (qty > 0 && products[productId]) {
       lines += 1;
       total += qty * Number(products[productId].preco || 0);
@@ -97,17 +144,29 @@ export function calculateSummary(products, quantities) {
   return { lines, total };
 }
 
-export function renderReview({ container, products, quantities }) {
+export function renderReview({ container, products, items, notasEncomenda = "" }) {
   container.innerHTML = "";
 
-  for (const [productId, qtyRaw] of Object.entries(quantities || {})) {
-    const qty = Number(qtyRaw || 0);
+  for (const [productId, item] of Object.entries(items || {})) {
+    const qty = Number(item?.quantidade || 0);
+    const note = item?.nota || "";
     const product = products[productId];
+
     if (!product || qty <= 0) continue;
 
     const row = document.createElement("div");
     row.className = "review-item";
-    row.textContent = `${qty} × ${product.nome} (${product.unidade}) — ${money(qty * Number(product.preco || 0))}`;
+
+    const noteText = note ? ` | Nota: ${note}` : "";
+    row.textContent = `${qty} × ${product.nome} (${product.unidade}) — ${money(qty * Number(product.preco || 0))}${noteText}`;
+
     container.appendChild(row);
+  }
+
+  if (notasEncomenda) {
+    const notesRow = document.createElement("div");
+    notesRow.className = "review-item";
+    notesRow.innerHTML = `<strong>Notas da encomenda:</strong> ${notasEncomenda}`;
+    container.appendChild(notesRow);
   }
 }
