@@ -27,6 +27,25 @@ export function renderPickupOptions(selectEl, options = [], selectedValue = "") 
   }
 }
 
+export function getDisplayedPrice(product) {
+  const unidade = String(product?.unidade || "").toLowerCase();
+  const precoKg = Number(product?.preco || 0);
+  const gramas = Number(product?.quantidadeComercializacaoGr || 0);
+  
+const displayedPrice = getDisplayedPrice(product);
+row.textContent = `${qty} × ${product.nome} (${product.unidade}) — ${money(qty * displayedPrice)}${noteText}`;
+
+  if (unidade === "kg") {
+    return precoKg;
+  }
+
+  if (gramas > 0) {
+    return (precoKg * gramas) / 1000;
+  }
+
+  return precoKg;
+}
+
 export function renderProducts({
   container,
   products,
@@ -89,9 +108,10 @@ const stepValue = integerOnly ? "1" : "0.1";
     const card = document.createElement("div");
     card.className = "product-card";
 
-    card.innerHTML = `
+    const displayedPrice = getDisplayedPrice(product);
+	card.innerHTML = `
       <div class="product-title">${product.nome}</div>
-      <div class="product-meta">${product.unidade}${gramsText} • ${money(product.preco)}</div>
+      <div class="product-meta">${product.unidade}${gramsText} • ${money(displayedPrice)}</div>
       ${originText}
       ${commentText}
       <div class="qty-row">
@@ -139,9 +159,11 @@ export function calculateSummary(products, items) {
 
   for (const [productId, item] of Object.entries(items || {})) {
     const qty = Number(item?.quantidade || 0);
-    if (qty > 0 && products[productId]) {
+    const product = products[productId];
+
+    if (qty > 0 && product) {
       lines += 1;
-      total += qty * Number(products[productId].preco || 0);
+      total += qty * getDisplayedPrice(product);
     }
   }
 
@@ -162,7 +184,8 @@ export function renderReview({ container, products, items, notasEncomenda = "" }
     row.className = "review-item";
 
     const noteText = note ? ` | Nota: ${note}` : "";
-    row.textContent = `${qty} × ${product.nome} (${product.unidade}) — ${money(qty * Number(product.preco || 0))}${noteText}`;
+    const displayedPrice = getDisplayedPrice(product);
+	row.textContent = `${qty} × ${product.nome} (${product.unidade}) — ${money(qty * displayedPrice)}${noteText}`;
 
     container.appendChild(row);
   }
