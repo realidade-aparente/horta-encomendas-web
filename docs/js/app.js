@@ -61,8 +61,8 @@ const EMAILJS_SERVICE_ID = "service_ja0vggr";
 const EMAILJS_TEMPLATE_CLIENTE = "template_08hxlen";
 
 // MODO TESTE PROVISÓRIO
-const TEST_WEEK_ID = "2026-04-06";
-const TEST_WEEK_LABEL = "Semana 15 - 2026-04-06";
+const TEST_WEEK_ID = "2026-04-13";
+const TEST_WEEK_LABEL = "Semana 16 - 2026-04-13";
 
 function initEmailJS() {
   if (window.emailjs) {
