@@ -516,7 +516,7 @@ async function sendClientConfirmationEmail(payload) {
       : "Confirmamos a atualização da seguinte encomenda:",
     order_rows_html: buildOrderRowsHtml(),
     pickup_location: payload.localRecolha || "",
-    order_total_label: isFinal ? "Valor final" : "Estimativa",
+    order_total_label: isFinal ? "Valor final" : "Valor estimado",
     order_total: money(payload.totais?.valorEstimado || 0),
     notes_html: buildNotesHtml(),
     updated_at: new Date(payload.ultimaAtualizacao).toLocaleString("pt-PT"),
