@@ -95,18 +95,17 @@ const stepValue = integerOnly ? "1" : "0.1";
       ${originText}
       ${commentText}
       <div class="qty-row">
-        
+        <button class="qty-btn" data-action="minus" ${isClosed ? "disabled" : ""}>-</button>
         <input
   class="qty-input"
   type="number"
-  inputmode="decimal"
+  
   step="${stepValue}"
   min="0"
   value="${qty}"
   ${isClosed ? "disabled" : ""}
 />
-        <button class="qty-btn" data-action="minus" ${isClosed ? "disabled" : ""}>-</button>
-		<button class="qty-btn" data-action="plus" ${isClosed ? "disabled" : ""}>+</button>
+        <button class="qty-btn" data-action="plus" ${isClosed ? "disabled" : ""}>+</button>
       </div>
       ${noteField}
     `;
