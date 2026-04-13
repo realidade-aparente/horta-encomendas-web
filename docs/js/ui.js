@@ -55,11 +55,17 @@ export function renderProducts({
 }) {
   container.innerHTML = "";
 
-  const sorted = Object.entries(products || {}).sort((a, b) => {
-    const orderA = a[1].ordem ?? 9999;
-    const orderB = b[1].ordem ?? 9999;
-    return orderA - orderB;
-  });
+const sorted = Object.entries(products || {}).sort((a, b) => {
+  const nomeA = String(a[1].nome || "").toLocaleLowerCase("pt-PT");
+  const nomeB = String(b[1].nome || "").toLocaleLowerCase("pt-PT");
+
+  const cmp = nomeA.localeCompare(nomeB, "pt-PT");
+  if (cmp !== 0) return cmp;
+
+  const orderA = a[1].ordem ?? 9999;
+  const orderB = b[1].ordem ?? 9999;
+  return orderA - orderB;
+});
 
   for (const [productId, product] of sorted) {
     if (product.ativo === false) continue;
