@@ -22,7 +22,7 @@ import {
   renderPickupOptions,
   renderProducts,
   calculateSummary,
-  renderReview
+  renderReview,
   getDisplayedPrice
 } from "./ui.js";
 
