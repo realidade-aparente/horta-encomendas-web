@@ -18,6 +18,14 @@ export function setWeekStatus(el, estado) {
 export function renderPickupOptions(selectEl, options = [], selectedValue = "") {
   selectEl.innerHTML = "";
 
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "Escolhe um local desta lista";
+  placeholder.disabled = true;
+  placeholder.hidden = true;
+  placeholder.selected = !selectedValue;
+  selectEl.appendChild(placeholder);
+
   for (const item of options) {
     const opt = document.createElement("option");
     opt.value = item;
@@ -55,17 +63,17 @@ export function renderProducts({
 }) {
   container.innerHTML = "";
 
-const sorted = Object.entries(products || {}).sort((a, b) => {
-  const nomeA = String(a[1].nome || "").toLocaleLowerCase("pt-PT");
-  const nomeB = String(b[1].nome || "").toLocaleLowerCase("pt-PT");
+  const sorted = Object.entries(products || {}).sort((a, b) => {
+    const nomeA = String(a[1].nome || "").toLocaleLowerCase("pt-PT");
+    const nomeB = String(b[1].nome || "").toLocaleLowerCase("pt-PT");
 
-  const cmp = nomeA.localeCompare(nomeB, "pt-PT");
-  if (cmp !== 0) return cmp;
+    const cmp = nomeA.localeCompare(nomeB, "pt-PT");
+    if (cmp !== 0) return cmp;
 
-  const orderA = a[1].ordem ?? 9999;
-  const orderB = b[1].ordem ?? 9999;
-  return orderA - orderB;
-});
+    const orderA = a[1].ordem ?? 9999;
+    const orderB = b[1].ordem ?? 9999;
+    return orderA - orderB;
+  });
 
   for (const [productId, product] of sorted) {
     if (product.ativo === false) continue;
