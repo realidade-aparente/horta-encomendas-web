@@ -192,9 +192,22 @@ onMinus: (productId) => {
 },
 onPlus: (productId) => {
   const product = state.products[productId];
+  const unidade = String(product?.unidade || "").toLowerCase();
   const current = Number(state.items[productId]?.quantidade || 0);
-  const step = getQuantityStep(product, current);
-  const next = Number((current + step).toFixed(3));
+
+  let next;
+
+  if (["molho", "emb", "un"].includes(unidade)) {
+    next = current + 1;
+  } else if (unidade === "kg") {
+    if (current < 0.9) {
+      next = Number((current + 0.1).toFixed(3));
+    } else {
+      next = Math.floor(current) + 1;
+    }
+  } else {
+    next = current + 1;
+  }
 
   state.items[productId] = {
     quantidade: next,
