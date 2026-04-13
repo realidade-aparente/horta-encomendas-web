@@ -68,14 +68,15 @@ export function renderProducts({
     if (product.ativo === false) continue;
     if (product.tipoAtividade === "i") continue;
 
-const unidade = String(product.unidade || "").toLowerCase();
-const integerOnly = ["molho", "emb", "un"].includes(unidade);
-const stepValue = integerOnly ? "1" : "0.1";
-
-
     const item = items[productId] || {};
     const qty = item.quantidade ?? "";
     const note = item.nota ?? "";
+
+    const unidade = String(product.unidade || "").toLowerCase();
+    const integerOnly = ["molho", "emb", "un"].includes(unidade);
+    const stepValue = integerOnly ? "1" : "0.1";
+
+    const displayedPrice = getDisplayedPrice(product);
 
     const gramsText = product.quantidadeComercializacaoGr
       ? ` • ${product.quantidadeComercializacaoGr}g`
@@ -96,7 +97,7 @@ const stepValue = integerOnly ? "1" : "0.1";
             class="note-input"
             type="text"
             maxlength="20"
-            placeholder="Nota curta (máx. 20 caract.)"
+            placeholder="Nota curta (máx. 20)"
             value="${escapeHtml(note)}"
             ${isClosed ? "disabled" : ""}
           />
@@ -108,8 +109,7 @@ const stepValue = integerOnly ? "1" : "0.1";
     const card = document.createElement("div");
     card.className = "product-card";
 
-    const displayedPrice = getDisplayedPrice(product);
-	card.innerHTML = `
+    card.innerHTML = `
       <div class="product-title">${product.nome}</div>
       <div class="product-meta">${product.unidade}${gramsText} • ${money(displayedPrice)}</div>
       ${originText}
@@ -117,14 +117,14 @@ const stepValue = integerOnly ? "1" : "0.1";
       <div class="qty-row">
         <button class="qty-btn" data-action="minus" ${isClosed ? "disabled" : ""}>-</button>
         <input
-  class="qty-input"
-  type="number"
-  inputmode="decimal"
-  step="${stepValue}"
-  min="0"
-  value="${qty}"
-  ${isClosed ? "disabled" : ""}
-/>
+          class="qty-input"
+          type="number"
+          inputmode="decimal"
+          step="${stepValue}"
+          min="0"
+          value="${qty}"
+          ${isClosed ? "disabled" : ""}
+        />
         <button class="qty-btn" data-action="plus" ${isClosed ? "disabled" : ""}>+</button>
       </div>
       ${noteField}
