@@ -75,9 +75,10 @@ export function renderProducts({
 
     const displayedPrice = getDisplayedPrice(product);
 
-    const gramsText = product.quantidadeComercializacaoGr
-      ? ` • ${product.quantidadeComercializacaoGr}g`
-      : "";
+    const gramsText =
+    unidade !== "kg" && product.quantidadeComercializacaoGr
+    ? ` • ${product.quantidadeComercializacaoGr}g`
+    : "";
 
     const originText = product.origem
       ? `<div class="product-extra">Origem: ${product.origem}</div>`
