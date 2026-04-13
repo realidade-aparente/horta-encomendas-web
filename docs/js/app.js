@@ -23,6 +23,7 @@ import {
   renderProducts,
   calculateSummary,
   renderReview
+  getDisplayedPrice
 } from "./ui.js";
 
 function getCurrentWeekInfo() {
@@ -151,59 +152,58 @@ function refreshSummary() {
   els.summaryTotal.textContent = `Total estimado: ${money(total)}`;
 }
 
+function getQuantityStep(product, currentQty = 0) {
+  const unidade = String(product?.unidade || "").toLowerCase();
+
+  if (["molho", "emb", "un"].includes(unidade)) {
+    return 1;
+  }
+
+  if (unidade === "kg") {
+    return currentQty <= 1 ? 0.1 : 1;
+  }
+
+  return 1;
+}
+
 function renderAllProducts() {
   renderProducts({
     container: els.productsList,
     products: state.products,
     items: state.items,
     isClosed: !state.user,
-    onMinus: (productId) => {
-      const unidade = String(state.products[productId]?.unidade || "").toLowerCase();
-const delta = ["molho", "emb", "un"].includes(unidade) ? 1 : 0.1;
+onMinus: (productId) => {
+  const product = state.products[productId];
+  const current = Number(state.items[productId]?.quantidade || 0);
+  const step = getQuantityStep(product, current);
+  const next = Math.max(0, Number((current - step).toFixed(3)));
 
-const current = Number(state.items[productId]?.quantidade || 0);
-const next = Math.max(0, Number((current - delta).toFixed(3)));
+  if (next === 0) {
+    delete state.items[productId];
+  } else {
+    state.items[productId] = {
+      quantidade: next,
+      nota: state.items[productId]?.nota || ""
+    };
+  }
 
-      if (next === 0) {
-        delete state.items[productId];
-      } else {
-        state.items[productId] = {
-          quantidade: next,
-          nota: state.items[productId]?.nota || ""
-        };
-      }
+  renderAllProducts();
+  refreshSummary();
+},
+onPlus: (productId) => {
+  const product = state.products[productId];
+  const current = Number(state.items[productId]?.quantidade || 0);
+  const step = getQuantityStep(product, current);
+  const next = Number((current + step).toFixed(3));
 
-      renderAllProducts();
-      refreshSummary();
-    },
-    onPlus: (productId) => {
-      const unidade = String(state.products[productId]?.unidade || "").toLowerCase();
-const delta = ["molho", "emb", "un"].includes(unidade) ? 1 : 0.1;
+  state.items[productId] = {
+    quantidade: next,
+    nota: state.items[productId]?.nota || ""
+  };
 
-const current = Number(state.items[productId]?.quantidade || 0);
-const next = Number((current + delta).toFixed(3));
-      state.items[productId] = {
-        quantidade: current + 1,
-        nota: state.items[productId]?.nota || ""
-      };
-
-      renderAllProducts();
-      refreshSummary();
-    },
-    onInputQty: (productId, value) => {
-      const normalized = normalizeQty(value, state.products[productId]);
-
-      if (normalized === "") {
-        delete state.items[productId];
-      } else {
-        state.items[productId] = {
-          quantidade: normalized,
-          nota: state.items[productId]?.nota || ""
-        };
-      }
-
-      refreshSummary();
-    },
+  renderAllProducts();
+  refreshSummary();
+},
     onInputNote: (productId, value) => {
       const cleaned = String(value || "").slice(0, 20);
 
@@ -229,7 +229,7 @@ function buildOrderLinesText() {
 
     if (!product || qty <= 0) continue;
 
-    const subtotal = qty * Number(product.preco || 0);
+    const subtotal = qty * getDisplayedPrice(product);
     const noteText = note ? ` | Nota: ${note}` : "";
 
     lines.push(
