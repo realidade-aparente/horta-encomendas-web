@@ -31,9 +31,6 @@ export function getDisplayedPrice(product) {
   const unidade = String(product?.unidade || "").toLowerCase();
   const precoKg = Number(product?.preco || 0);
   const gramas = Number(product?.quantidadeComercializacaoGr || 0);
-  
-const displayedPrice = getDisplayedPrice(product);
-row.textContent = `${qty} × ${product.nome} (${product.unidade}) — ${money(qty * displayedPrice)}${noteText}`;
 
   if (unidade === "kg") {
     return precoKg;

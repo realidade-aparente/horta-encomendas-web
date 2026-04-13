@@ -204,6 +204,22 @@ onPlus: (productId) => {
   renderAllProducts();
   refreshSummary();
 },
+
+onInputQty: (productId, value) => {
+  const normalized = normalizeQty(value, state.products[productId]);
+
+  if (normalized === "") {
+    delete state.items[productId];
+  } else {
+    state.items[productId] = {
+      quantidade: normalized,
+      nota: state.items[productId]?.nota || ""
+    };
+  }
+
+  refreshSummary();
+},
+
     onInputNote: (productId, value) => {
       const cleaned = String(value || "").slice(0, 20);
 
