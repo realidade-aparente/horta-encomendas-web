@@ -26,11 +26,11 @@
 
       <div class="form-group">
         <label for="authPassword">Palavra-passe / PIN</label>
-		<input id="authPassword" type="password" placeholder="Entre 4 e 10 caracteres" />
-		<p class="hint">
-			Define uma palavra-passe para entrares mais tarde e acederes à tua encomenda.
-			Pode ser um PIN. Aceita números, letras e símbolos do teclado.
-		</p>
+        <input id="authPassword" type="password" placeholder="Entre 4 e 10 caracteres" />
+        <p class="hint">
+          Define uma palavra-passe para entrares mais tarde e acederes à tua encomenda.
+          Pode ser um PIN. Aceita números, letras e símbolos do teclado.
+        </p>
       </div>
 
       <div class="auth-actions">
@@ -65,9 +65,9 @@
         </div>
       </section>
 
-<section class="card">
-  <p><strong>Última atualização:</strong> <span id="lastUpdate">Sem registo</span></p>
-</section>
+      <section class="card">
+        <p><strong>Última atualização:</strong> <span id="lastUpdate">Sem registo</span></p>
+      </section>
 
       <section id="secClosed" class="card hidden">
         <h2>Encomendas encerradas</h2>
@@ -86,29 +86,30 @@
       <section class="card">
         <h2>Produtos desta semana</h2>
         <p class="hint">(Produtos ao kg aceitam quantidades decimais)</p>
-		<div id="productsList"></div>	
+        <div id="productsList"></div>
       </section>
 
-	  <section class="card">
-		<h2>Notas para a encomenda</h2>
-		<div class="form-group">
-			<label for="orderNotes">Notas gerais</label>
-			<textarea
-			id="orderNotes"
-			maxlength="100"
-			rows="3"
-			placeholder="Ex.: se possível escolher batatas mais pequenas, curgetes apenas das verdes, etc. "
-			></textarea>
-		</div>
-		<p class="hint">Máximo 100 caracteres.</p>
-		<p class="hint"></p>
-	  </section>
+      <section class="card">
+        <h2>Notas para a encomenda</h2>
+        <div class="form-group">
+          <label for="orderNotes">Notas gerais</label>
+          <textarea
+            id="orderNotes"
+            maxlength="100"
+            rows="3"
+            placeholder="Ex.: se possível escolher batatas mais pequenas, curgetes apenas das verdes, etc. "
+          ></textarea>
+          <div id="orderNotesCounter" class="char-counter">0/100</div>
+        </div>
+        <p class="hint">Máximo 100 caracteres.</p>
+        <p class="hint"></p>
+      </section>
 
       <section class="summary-bar">
         <div>
           <strong id="summaryLines">0 produtos</strong>
           <div id="summaryTotal">Total estimado: 0,00 €</div>
-		  <p class="hint">Prime o botão "Resumo" para submeter</p>
+          <p class="hint">Prime o botão "Resumo" para poder submeter a encomenda.</p>
         </div>
         <div class="summary-actions">
           <button id="btnReview" class="secondary">Resumo</button>

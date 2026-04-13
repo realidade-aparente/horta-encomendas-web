@@ -76,9 +76,9 @@ export function renderProducts({
     const displayedPrice = getDisplayedPrice(product);
 
     const gramsText =
-    unidade !== "kg" && product.quantidadeComercializacaoGr
-    ? ` • ${product.quantidadeComercializacaoGr}g`
-    : "";
+      unidade !== "kg" && product.quantidadeComercializacaoGr
+        ? ` • ${product.quantidadeComercializacaoGr}g`
+        : "";
 
     const originText = product.origem
       ? `<div class="product-extra">Origem: ${product.origem}</div>`
@@ -99,7 +99,7 @@ export function renderProducts({
             value="${escapeHtml(note)}"
             ${isClosed ? "disabled" : ""}
           />
-          <div class="char-counter">${String(note).length}/20</div>
+          <div class="char-counter" data-counter-for="${productId}">${String(note).length}/20</div>
         </div>
       `
       : "";
@@ -132,11 +132,22 @@ export function renderProducts({
     const btnPlus = card.querySelector('[data-action="plus"]');
     const qtyInput = card.querySelector(".qty-input");
     const noteInput = card.querySelector(".note-input");
+    const noteCounter = card.querySelector(".char-counter");
 
     btnMinus?.addEventListener("click", () => onMinus(productId));
     btnPlus?.addEventListener("click", () => onPlus(productId));
     qtyInput?.addEventListener("input", (e) => onInputQty(productId, e.target.value));
-    noteInput?.addEventListener("input", (e) => onInputNote(productId, e.target.value));
+
+    noteInput?.addEventListener("input", (e) => {
+      const value = String(e.target.value || "").slice(0, 20);
+      e.target.value = value;
+
+      if (noteCounter) {
+        noteCounter.textContent = `${value.length}/20`;
+      }
+
+      onInputNote(productId, value);
+    });
 
     container.appendChild(card);
   }
@@ -183,7 +194,7 @@ export function renderReview({ container, products, items, notasEncomenda = "" }
 
     const noteText = note ? ` | Nota: ${note}` : "";
     const displayedPrice = getDisplayedPrice(product);
-	row.textContent = `${qty} × ${product.nome} (${product.unidade}) — ${money(qty * displayedPrice)}${noteText}`;
+    row.textContent = `${qty} × ${product.nome} (${product.unidade}) — ${money(qty * displayedPrice)}${noteText}`;
 
     container.appendChild(row);
   }

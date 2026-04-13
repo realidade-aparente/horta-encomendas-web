@@ -109,6 +109,7 @@ const els = {
   btnSubmitOrder: document.getElementById("btnSubmitOrder"),
   btnSaveOrder: document.getElementById("btnSaveOrder"),
   orderNotes: document.getElementById("orderNotes"),
+  orderNotesCounter: document.getElementById("orderNotesCounter"),
 };
 
 const state = {
@@ -172,67 +173,65 @@ function renderAllProducts() {
     products: state.products,
     items: state.items,
     isClosed: !state.user,
-onMinus: (productId) => {
-  const product = state.products[productId];
-  const current = Number(state.items[productId]?.quantidade || 0);
-  const step = getQuantityStep(product, current);
-  const next = Math.max(0, Number((current - step).toFixed(3)));
+    onMinus: (productId) => {
+      const product = state.products[productId];
+      const current = Number(state.items[productId]?.quantidade || 0);
+      const step = getQuantityStep(product, current);
+      const next = Math.max(0, Number((current - step).toFixed(3)));
 
-  if (next === 0) {
-    delete state.items[productId];
-  } else {
-    state.items[productId] = {
-      quantidade: next,
-      nota: state.items[productId]?.nota || ""
-    };
-  }
+      if (next === 0) {
+        delete state.items[productId];
+      } else {
+        state.items[productId] = {
+          quantidade: next,
+          nota: state.items[productId]?.nota || ""
+        };
+      }
 
-  renderAllProducts();
-  refreshSummary();
-},
-onPlus: (productId) => {
-  const product = state.products[productId];
-  const unidade = String(product?.unidade || "").toLowerCase();
-  const current = Number(state.items[productId]?.quantidade || 0);
+      renderAllProducts();
+      refreshSummary();
+    },
+    onPlus: (productId) => {
+      const product = state.products[productId];
+      const unidade = String(product?.unidade || "").toLowerCase();
+      const current = Number(state.items[productId]?.quantidade || 0);
 
-  let next;
+      let next;
 
-  if (["molho", "emb", "un"].includes(unidade)) {
-    next = current + 1;
-  } else if (unidade === "kg") {
-    if (current < 0.9) {
-      next = Number((current + 0.1).toFixed(3));
-    } else {
-      next = Math.floor(current) + 1;
-    }
-  } else {
-    next = current + 1;
-  }
+      if (["molho", "emb", "un"].includes(unidade)) {
+        next = current + 1;
+      } else if (unidade === "kg") {
+        if (current < 0.9) {
+          next = Number((current + 0.1).toFixed(3));
+        } else {
+          next = Math.floor(current) + 1;
+        }
+      } else {
+        next = current + 1;
+      }
 
-  state.items[productId] = {
-    quantidade: next,
-    nota: state.items[productId]?.nota || ""
-  };
+      state.items[productId] = {
+        quantidade: next,
+        nota: state.items[productId]?.nota || ""
+      };
 
-  renderAllProducts();
-  refreshSummary();
-},
+      renderAllProducts();
+      refreshSummary();
+    },
+    onInputQty: (productId, value) => {
+      const normalized = normalizeQty(value, state.products[productId]);
 
-onInputQty: (productId, value) => {
-  const normalized = normalizeQty(value, state.products[productId]);
+      if (normalized === "") {
+        delete state.items[productId];
+      } else {
+        state.items[productId] = {
+          quantidade: normalized,
+          nota: state.items[productId]?.nota || ""
+        };
+      }
 
-  if (normalized === "") {
-    delete state.items[productId];
-  } else {
-    state.items[productId] = {
-      quantidade: normalized,
-      nota: state.items[productId]?.nota || ""
-    };
-  }
-
-  refreshSummary();
-},
-
+      refreshSummary();
+    },
     onInputNote: (productId, value) => {
       const cleaned = String(value || "").slice(0, 20);
 
@@ -370,6 +369,10 @@ async function loadAppData() {
     state.notasEncomenda = order?.notasEncomenda || "";
     els.orderNotes.value = state.notasEncomenda;
 
+    if (els.orderNotesCounter) {
+      els.orderNotesCounter.textContent = `${state.notasEncomenda.length}/100`;
+    }
+
     els.lastUpdate.textContent = order?.ultimaAtualizacao
       ? new Date(order.ultimaAtualizacao).toLocaleString("pt-PT")
       : "Sem registo";
@@ -379,6 +382,11 @@ async function loadAppData() {
     state.pickupLocation = "";
     state.notasEncomenda = "";
     els.orderNotes.value = "";
+
+    if (els.orderNotesCounter) {
+      els.orderNotesCounter.textContent = "0/100";
+    }
+
     els.customerName.textContent = "Visitante";
     els.customerEmail.textContent = "Inicia sessão para guardar a encomenda";
     els.lastUpdate.textContent = "Sem registo";
@@ -463,12 +471,12 @@ async function handleSave(submitState = "submetida") {
     alert("Inicia sessão ou cria conta para guardar ou submeter a encomenda.");
     return;
   }
-  
+
   if (!state.profile?.nome || !String(state.profile.nome).trim()) {
-  alert("O perfil deste cliente está incompleto. Termina sessão e volta a entrar.");
-  return;
+    alert("O perfil deste cliente está incompleto. Termina sessão e volta a entrar.");
+    return;
   }
-  
+
   if (!state.weekId || !state.uid) return;
 
   if (!state.pickupLocation) {
@@ -543,7 +551,13 @@ function bindEvents() {
   });
 
   els.orderNotes.addEventListener("input", (e) => {
-    state.notasEncomenda = String(e.target.value || "").slice(0, 100);
+    const value = String(e.target.value || "").slice(0, 100);
+    e.target.value = value;
+    state.notasEncomenda = value;
+
+    if (els.orderNotesCounter) {
+      els.orderNotesCounter.textContent = `${value.length}/100`;
+    }
   });
 }
 
