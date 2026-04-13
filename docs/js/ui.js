@@ -47,8 +47,12 @@ export function renderProducts({
 
   for (const [productId, product] of sorted) {
     if (product.ativo === false) continue;
-    if (product.visivelCliente === false) continue;
     if (product.tipoAtividade === "i") continue;
+
+const unidade = String(product.unidade || "").toLowerCase();
+const integerOnly = ["molho", "emb", "un"].includes(unidade);
+const stepValue = integerOnly ? "1" : "0.1";
+
 
     const item = items[productId] || {};
     const qty = item.quantidade ?? "";
@@ -93,14 +97,14 @@ export function renderProducts({
       <div class="qty-row">
         <button class="qty-btn" data-action="minus" ${isClosed ? "disabled" : ""}>-</button>
         <input
-          class="qty-input"
-          type="number"
-          inputmode="decimal"
-          step="0.1"
-          min="0"
-          value="${qty}"
-          ${isClosed ? "disabled" : ""}
-        />
+  class="qty-input"
+  type="number"
+  inputmode="decimal"
+  step="${stepValue}"
+  min="0"
+  value="${qty}"
+  ${isClosed ? "disabled" : ""}
+/>
         <button class="qty-btn" data-action="plus" ${isClosed ? "disabled" : ""}>+</button>
       </div>
       ${noteField}
