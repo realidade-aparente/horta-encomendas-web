@@ -77,7 +77,7 @@ const stepValue = integerOnly ? "1" : "0.1";
             class="note-input"
             type="text"
             maxlength="20"
-            placeholder="Nota curta (máx. 20)"
+            placeholder="Nota curta (máx. 20 caract.)"
             value="${escapeHtml(note)}"
             ${isClosed ? "disabled" : ""}
           />
@@ -95,7 +95,7 @@ const stepValue = integerOnly ? "1" : "0.1";
       ${originText}
       ${commentText}
       <div class="qty-row">
-        <button class="qty-btn" data-action="minus" ${isClosed ? "disabled" : ""}>-</button>
+        
         <input
   class="qty-input"
   type="number"
@@ -105,7 +105,8 @@ const stepValue = integerOnly ? "1" : "0.1";
   value="${qty}"
   ${isClosed ? "disabled" : ""}
 />
-        <button class="qty-btn" data-action="plus" ${isClosed ? "disabled" : ""}>+</button>
+        <button class="qty-btn" data-action="minus" ${isClosed ? "disabled" : ""}>-</button>
+		<button class="qty-btn" data-action="plus" ${isClosed ? "disabled" : ""}>+</button>
       </div>
       ${noteField}
     `;
