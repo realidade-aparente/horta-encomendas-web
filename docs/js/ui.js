@@ -99,7 +99,7 @@ const stepValue = integerOnly ? "1" : "0.1";
         <input
   class="qty-input"
   type="number"
-  
+  inputmode="decimal"
   step="${stepValue}"
   min="0"
   value="${qty}"
