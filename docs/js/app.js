@@ -127,12 +127,21 @@ function setMessage(msg, isError = false) {
   els.authMessage.style.color = isError ? "#b00020" : "#2f7d32";
 }
 
-function normalizeQty(value) {
+function normalizeQty(value, product) {
   if (value === "" || value === null || value === undefined) return "";
+
   const cleaned = String(value).replace(",", ".").trim();
   const n = Number(cleaned);
 
   if (Number.isNaN(n) || n < 0) return "";
+
+  const unidade = String(product?.unidade || "").toLowerCase();
+  const integerOnly = ["molho", "emb", "un"].includes(unidade);
+
+  if (integerOnly) {
+    return Math.round(n);
+  }
+
   return Number(n.toFixed(3));
 }
 
@@ -149,8 +158,11 @@ function renderAllProducts() {
     items: state.items,
     isClosed: !state.user,
     onMinus: (productId) => {
-      const current = Number(state.items[productId]?.quantidade || 0);
-      const next = Math.max(0, current - 1);
+      const unidade = String(state.products[productId]?.unidade || "").toLowerCase();
+const delta = ["molho", "emb", "un"].includes(unidade) ? 1 : 0.1;
+
+const current = Number(state.items[productId]?.quantidade || 0);
+const next = Math.max(0, Number((current - delta).toFixed(3)));
 
       if (next === 0) {
         delete state.items[productId];
@@ -165,7 +177,11 @@ function renderAllProducts() {
       refreshSummary();
     },
     onPlus: (productId) => {
-      const current = Number(state.items[productId]?.quantidade || 0);
+      const unidade = String(state.products[productId]?.unidade || "").toLowerCase();
+const delta = ["molho", "emb", "un"].includes(unidade) ? 1 : 0.1;
+
+const current = Number(state.items[productId]?.quantidade || 0);
+const next = Number((current + delta).toFixed(3));
       state.items[productId] = {
         quantidade: current + 1,
         nota: state.items[productId]?.nota || ""
@@ -175,7 +191,7 @@ function renderAllProducts() {
       refreshSummary();
     },
     onInputQty: (productId, value) => {
-      const normalized = normalizeQty(value);
+      const normalized = normalizeQty(value, state.products[productId]);
 
       if (normalized === "") {
         delete state.items[productId];
