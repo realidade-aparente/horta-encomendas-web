@@ -129,6 +129,15 @@ function setMessage(msg, isError = false) {
   els.authMessage.style.color = isError ? "#b00020" : "#2f7d32";
 }
 
+function escapeHtml(value = "") {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
 function normalizeQty(value, product) {
   if (value === "" || value === null || value === undefined) return "";
 
@@ -153,7 +162,7 @@ function refreshSummary() {
   els.summaryTotal.textContent = `Total estimado: ${money(total)}`;
 }
 
-function getQuantityStep(product, currentQty = 0) {
+function getQuantityStepMinus(product, currentQty = 0) {
   const unidade = String(product?.unidade || "").toLowerCase();
 
   if (["molho", "emb", "un"].includes(unidade)) {
@@ -167,6 +176,53 @@ function getQuantityStep(product, currentQty = 0) {
   return 1;
 }
 
+function buildOrderRowsHtml() {
+  const rows = [];
+
+  for (const [productId, item] of Object.entries(state.items || {})) {
+    const qty = Number(item?.quantidade || 0);
+    const note = item?.nota || "";
+    const product = state.products[productId];
+
+    if (!product || qty <= 0) continue;
+
+    const subtotal = qty * getDisplayedPrice(product);
+    const noteHtml = note
+      ? `<div style="font-size:12px; color:#777; margin-top:4px;">Nota: ${escapeHtml(note)}</div>`
+      : "";
+
+    rows.push(`
+      <tr>
+        <td style="padding:14px 0; border-bottom:1px solid #e5e5e5; vertical-align:top;">
+          <div>${escapeHtml(product.nome)}</div>
+          ${noteHtml}
+        </td>
+        <td style="padding:14px 0; border-bottom:1px solid #e5e5e5; vertical-align:top;">
+          ${escapeHtml(String(qty))} ${escapeHtml(product.unidade)}
+        </td>
+        <td style="padding:14px 0; border-bottom:1px solid #e5e5e5; text-align:right; vertical-align:top;">
+          ${money(subtotal)}
+        </td>
+      </tr>
+    `);
+  }
+
+  return rows.join("");
+}
+
+function buildNotesHtml() {
+  if (!state.notasEncomenda) return "";
+
+  return `
+    <div style="border-top:1px solid #ddd; padding-top:20px; margin-top:20px;">
+      <div style="font-size:12px; text-transform:uppercase; color:#888; margin-bottom:8px;">Notas</div>
+      <div style="font-size:16px; line-height:1.6;">
+        ${escapeHtml(state.notasEncomenda)}
+      </div>
+    </div>
+  `;
+}
+
 function renderAllProducts() {
   renderProducts({
     container: els.productsList,
@@ -176,7 +232,7 @@ function renderAllProducts() {
     onMinus: (productId) => {
       const product = state.products[productId];
       const current = Number(state.items[productId]?.quantidade || 0);
-      const step = getQuantityStep(product, current);
+      const step = getQuantityStepMinus(product, current);
       const next = Math.max(0, Number((current - step).toFixed(3)));
 
       if (next === 0) {
@@ -448,13 +504,21 @@ async function sendClientConfirmationEmail(payload) {
     return;
   }
 
+  const isFinal = payload.estado === "entregue";
+
   const templateParams = {
     to_email: state.user.email,
     to_name: state.profile?.nome || "Cliente",
     week_label: state.weekData?.meta?.label || state.weekId,
+    email_heading: payload.estado === "submetida" ? "Encomenda confirmada" : "Encomenda atualizada",
+    intro_text: payload.estado === "submetida"
+      ? "Confirmamos a receção da seguinte encomenda:"
+      : "Confirmamos a atualização da seguinte encomenda:",
+    order_rows_html: buildOrderRowsHtml(),
     pickup_location: payload.localRecolha || "",
-    order_lines: buildOrderLinesText(),
+    order_total_label: isFinal ? "Valor final" : "Estimativa",
     order_total: money(payload.totais?.valorEstimado || 0),
+    notes_html: buildNotesHtml(),
     updated_at: new Date(payload.ultimaAtualizacao).toLocaleString("pt-PT"),
     order_status: payload.estado || "submetida"
   };
