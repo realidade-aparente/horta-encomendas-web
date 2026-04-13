@@ -248,7 +248,7 @@ function buildOrderPayload(submitState = "submetida") {
   return {
     clienteUid: state.uid,
     email: state.user.email,
-    nomeCliente: state.profile?.nome || "",
+    nomeCliente: String(state.profile?.nome || "").trim(),
     origem: "web",
     estado: submitState,
     ultimaAtualizacao: new Date().toISOString(),
@@ -260,6 +260,29 @@ function buildOrderPayload(submitState = "submetida") {
       numeroLinhas: lines
     }
   };
+}
+
+async function ensureClientProfile() {
+  if (!state.user || !state.uid) return null;
+
+  let profile = await getClientProfile(state.uid);
+
+  if (!profile) {
+    const email = state.user.email || "";
+    const nomeBase = email ? email.split("@")[0] : "Cliente";
+
+    profile = {
+      email,
+      nome: nomeBase,
+      telefone: "",
+      ativo: true,
+      criadoEm: new Date().toISOString()
+    };
+
+    await saveClientProfile(state.uid, profile);
+  }
+
+  return profile;
 }
 
 async function loadAppData() {
@@ -291,7 +314,7 @@ async function loadAppData() {
   ];
 
   if (state.user && state.uid) {
-    state.profile = await getClientProfile(state.uid);
+    state.profile = await ensureClientProfile();
     const order = await getOrder(state.weekId, state.uid);
 
     els.customerName.textContent = state.profile?.nome || "Cliente";
@@ -395,6 +418,12 @@ async function handleSave(submitState = "submetida") {
     alert("Inicia sessão ou cria conta para guardar ou submeter a encomenda.");
     return;
   }
+  
+  if (!state.profile?.nome || !String(state.profile.nome).trim()) {
+  alert("O perfil deste cliente está incompleto. Termina sessão e volta a entrar.");
+  return;
+  }
+  
   if (!state.weekId || !state.uid) return;
 
   if (!state.pickupLocation) {
