@@ -60,10 +60,6 @@ const EMAILJS_PUBLIC_KEY = "hgrb7V-u6GGGCYUTa";
 const EMAILJS_SERVICE_ID = "service_ja0vggr";
 const EMAILJS_TEMPLATE_CLIENTE = "template_08hxlen";
 
-// MODO TESTE PROVISÓRIO
-const TEST_WEEK_ID = "2026-04-13";
-const TEST_WEEK_LABEL = "Semana 16 - 2026-04-13";
-
 function initEmailJS() {
   if (window.emailjs) {
     window.emailjs.init({
@@ -128,7 +124,6 @@ function setMessage(msg, isError = false) {
   els.authMessage.textContent = msg;
   els.authMessage.style.color = isError ? "#b00020" : "#2f7d32";
 }
-
 
 function escapeHtml(value = "") {
   return String(value)
@@ -210,7 +205,7 @@ function refreshSummary() {
   els.summaryTotal.textContent = `Total estimado: ${money(total)}`;
 }
 
-function getQuantityStep(product, currentQty = 0) {
+function getQuantityStepMinus(product, currentQty = 0) {
   const unidade = String(product?.unidade || "").toLowerCase();
 
   if (["molho", "emb", "un"].includes(unidade)) {
@@ -229,11 +224,11 @@ function renderAllProducts() {
     container: els.productsList,
     products: state.products,
     items: state.items,
-    isClosed: !state.user,
+    isClosed: state.weekData?.estado !== "aberta" || !state.user,
     onMinus: (productId) => {
       const product = state.products[productId];
       const current = Number(state.items[productId]?.quantidade || 0);
-      const step = getQuantityStep(product, current);
+      const step = getQuantityStepMinus(product, current);
       const next = Math.max(0, Number((current - step).toFixed(3)));
 
       if (next === 0) {
@@ -387,31 +382,20 @@ async function ensureClientProfile() {
 }
 
 async function loadAppData() {
-  getCurrentWeekInfo();
+  const currentWeek = getCurrentWeekInfo();
+  state.weekId = currentWeek.weekId;
 
-  state.weekId = TEST_WEEK_ID;
   state.weekData = await getWeekData(state.weekId);
 
-  state.weekData = {
-    ...(state.weekData || {}),
-    estado: "aberta",
-    meta: {
-      ...(state.weekData?.meta || {}),
-      label: TEST_WEEK_LABEL
-    }
-  };
-
-  els.weekLabel.textContent = TEST_WEEK_LABEL;
-  setWeekStatus(els.weekStatus, "aberta");
+  els.weekLabel.textContent = currentWeek.weekLabel;
+  setWeekStatus(els.weekStatus, state.weekData?.estado || "fechada");
 
   state.products = state.weekData?.produtos || {};
 
   const pickupOptions = state.weekData?.locaisRecolha || [
-    "Na quinta – quinta-feira",
-    "Na Verdizela – quinta-feira",
-    "Em Quinta do Anjo – quinta-feira",
-    "Na quinta – sábado",
-    "Em Almada – sábado"
+    "Quinta",
+    "Mercado local",
+    "Entrega combinada"
   ];
 
   if (state.user && state.uid) {
@@ -451,9 +435,14 @@ async function loadAppData() {
 
   renderPickupOptions(els.pickupLocation, pickupOptions, state.pickupLocation);
 
-  els.pickupLocation.disabled = !state.user;
-  els.orderNotes.disabled = !state.user;
-  hide(els.secClosed);
+  els.pickupLocation.disabled = !state.user || state.weekData?.estado !== "aberta";
+  els.orderNotes.disabled = !state.user || state.weekData?.estado !== "aberta";
+
+  if (state.weekData?.estado !== "aberta") {
+    show(els.secClosed);
+  } else {
+    hide(els.secClosed);
+  }
 
   renderAllProducts();
   refreshSummary();
