@@ -129,6 +129,7 @@ function setMessage(msg, isError = false) {
   els.authMessage.style.color = isError ? "#b00020" : "#2f7d32";
 }
 
+
 function escapeHtml(value = "") {
   return String(value)
     .replaceAll("&", "&amp;")
@@ -136,44 +137,6 @@ function escapeHtml(value = "") {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
-}
-
-function normalizeQty(value, product) {
-  if (value === "" || value === null || value === undefined) return "";
-
-  const cleaned = String(value).replace(",", ".").trim();
-  const n = Number(cleaned);
-
-  if (Number.isNaN(n) || n < 0) return "";
-
-  const unidade = String(product?.unidade || "").toLowerCase();
-  const integerOnly = ["molho", "emb", "un"].includes(unidade);
-
-  if (integerOnly) {
-    return Math.round(n);
-  }
-
-  return Number(n.toFixed(3));
-}
-
-function refreshSummary() {
-  const { lines, total } = calculateSummary(state.products, state.items);
-  els.summaryLines.textContent = `${lines} produtos`;
-  els.summaryTotal.textContent = `Total estimado: ${money(total)}`;
-}
-
-function getQuantityStepMinus(product, currentQty = 0) {
-  const unidade = String(product?.unidade || "").toLowerCase();
-
-  if (["molho", "emb", "un"].includes(unidade)) {
-    return 1;
-  }
-
-  if (unidade === "kg") {
-    return currentQty <= 1 ? 0.1 : 1;
-  }
-
-  return 1;
 }
 
 function buildOrderRowsHtml() {
@@ -223,6 +186,44 @@ function buildNotesHtml() {
   `;
 }
 
+function normalizeQty(value, product) {
+  if (value === "" || value === null || value === undefined) return "";
+
+  const cleaned = String(value).replace(",", ".").trim();
+  const n = Number(cleaned);
+
+  if (Number.isNaN(n) || n < 0) return "";
+
+  const unidade = String(product?.unidade || "").toLowerCase();
+  const integerOnly = ["molho", "emb", "un"].includes(unidade);
+
+  if (integerOnly) {
+    return Math.round(n);
+  }
+
+  return Number(n.toFixed(3));
+}
+
+function refreshSummary() {
+  const { lines, total } = calculateSummary(state.products, state.items);
+  els.summaryLines.textContent = `${lines} produtos`;
+  els.summaryTotal.textContent = `Total estimado: ${money(total)}`;
+}
+
+function getQuantityStep(product, currentQty = 0) {
+  const unidade = String(product?.unidade || "").toLowerCase();
+
+  if (["molho", "emb", "un"].includes(unidade)) {
+    return 1;
+  }
+
+  if (unidade === "kg") {
+    return currentQty <= 1 ? 0.1 : 1;
+  }
+
+  return 1;
+}
+
 function renderAllProducts() {
   renderProducts({
     container: els.productsList,
@@ -232,7 +233,7 @@ function renderAllProducts() {
     onMinus: (productId) => {
       const product = state.products[productId];
       const current = Number(state.items[productId]?.quantidade || 0);
-      const step = getQuantityStepMinus(product, current);
+      const step = getQuantityStep(product, current);
       const next = Math.max(0, Number((current - step).toFixed(3)));
 
       if (next === 0) {
@@ -498,7 +499,7 @@ async function handleLogin() {
   }
 }
 
-async function sendClientConfirmationEmail(payload) {
+async function sendClientConfirmationEmail(payload, isUpdate = false) {
   if (!window.emailjs) {
     console.warn("EmailJS não está disponível.");
     return;
@@ -510,13 +511,13 @@ async function sendClientConfirmationEmail(payload) {
     to_email: state.user.email,
     to_name: state.profile?.nome || "Cliente",
     week_label: state.weekData?.meta?.label || state.weekId,
-    email_heading: payload.estado === "submetida" ? "Encomenda confirmada" : "Encomenda atualizada",
-    intro_text: payload.estado === "submetida"
-      ? "Confirmamos a receção da seguinte encomenda:"
-      : "Confirmamos a atualização da seguinte encomenda:",
+    email_heading: isUpdate ? "Encomenda atualizada" : "Encomenda confirmada",
+    intro_text: isUpdate
+      ? "Confirmamos a atualização da seguinte encomenda:"
+      : "Confirmamos a receção da seguinte encomenda:",
     order_rows_html: buildOrderRowsHtml(),
     pickup_location: payload.localRecolha || "",
-    order_total_label: isFinal ? "Valor final" : "Valor estimado",
+    order_total_label: isFinal ? "Valor final" : "Estimativa",
     order_total: money(payload.totais?.valorEstimado || 0),
     notes_html: buildNotesHtml(),
     updated_at: new Date(payload.ultimaAtualizacao).toLocaleString("pt-PT"),
@@ -548,12 +549,15 @@ async function handleSave(submitState = "submetida") {
     return;
   }
 
+  const previousOrder = await getOrder(state.weekId, state.uid);
+  const isUpdate = !!previousOrder;
+
   const payload = buildOrderPayload(submitState);
   await saveOrder(state.weekId, state.uid, payload);
 
   if (submitState === "submetida") {
     try {
-      await sendClientConfirmationEmail(payload);
+      await sendClientConfirmationEmail(payload, isUpdate);
     } catch (err) {
       console.error("Erro ao enviar email:", err);
       alert("A encomenda foi submetida, mas houve um erro ao enviar o email de confirmação.");
