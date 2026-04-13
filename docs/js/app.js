@@ -173,7 +173,7 @@ function buildNotesHtml() {
 
   return `
     <div style="border-top:1px solid #ddd; padding-top:20px; margin-top:20px;">
-      <div style="font-size:12px; text-transform:uppercase; color:#888; margin-bottom:8px;">Notas</div>
+      <div style="font-size:12px; text-transform:uppercase; color:#888; margin-bottom:8px;">Notas gerais</div>
       <div style="font-size:16px; line-height:1.6;">
         ${escapeHtml(state.notasEncomenda)}
       </div>
@@ -502,8 +502,8 @@ async function sendClientConfirmationEmail(payload, isUpdate = false) {
     week_label: state.weekData?.meta?.label || state.weekId,
     email_heading: isUpdate ? "Encomenda atualizada" : "Encomenda confirmada",
     intro_text: isUpdate
-      ? "Confirmamos a atualização da seguinte encomenda:"
-      : "Confirmamos a receção da seguinte encomenda:",
+      ? "Confirmo a atualização da seguinte encomenda:"
+      : "Confirmo a receção da seguinte encomenda:",
     order_rows_html: buildOrderRowsHtml(),
     pickup_location: payload.localRecolha || "",
     order_total_label: isFinal ? "Valor final" : "Valor estimado",
