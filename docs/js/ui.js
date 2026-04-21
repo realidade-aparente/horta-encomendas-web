@@ -51,6 +51,17 @@ export function getDisplayedPrice(product) {
   return precoKg;
 }
 
+function getDisplayUnit(unit, qty) {
+  const unidade = String(unit || "").toLowerCase();
+  const quantidade = Number(qty || 0);
+
+  if (unidade === "molho") {
+    return quantidade === 1 ? "molho" : "molhos";
+  }
+
+  return unit || "";
+}
+
 export function renderProducts({
   container,
   products,
@@ -139,9 +150,9 @@ export function renderProducts({
       value="${qty}"
       ${isClosed ? "disabled" : ""}
     />
-    <span class="qty-unit ${qty === "" ? "hidden" : ""}">
-      ${escapeHtml(product.unidade)}
-    </span>
+	<span class="qty-unit ${qty === "" ? "hidden" : ""}">
+	  ${escapeHtml(getDisplayUnit(product.unidade, qty))}
+	</span>
   </div>
 
   <button class="qty-btn" data-action="plus" ${isClosed ? "disabled" : ""}>+</button>
