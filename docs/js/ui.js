@@ -126,31 +126,52 @@ export function renderProducts({
       <div class="product-meta">${product.unidade}${gramsText} • ${money(displayedPrice)}</div>
       ${originText}
       ${commentText}
-      <div class="qty-row">
-        <button class="qty-btn" data-action="minus" ${isClosed ? "disabled" : ""}>-</button>
-        <input
-          class="qty-input"
-          type="number"
-          inputmode="decimal"
-          step="${stepValue}"
-          min="0"
-          value="${qty}"
-          ${isClosed ? "disabled" : ""}
-        />
-        <button class="qty-btn" data-action="plus" ${isClosed ? "disabled" : ""}>+</button>
-      </div>
+<div class="qty-row">
+  <button class="qty-btn" data-action="minus" ${isClosed ? "disabled" : ""}>-</button>
+
+  <div class="qty-input-wrap">
+    <input
+      class="qty-input"
+      type="number"
+      inputmode="decimal"
+      step="${stepValue}"
+      min="0"
+      value="${qty}"
+      ${isClosed ? "disabled" : ""}
+    />
+    <span class="qty-unit ${qty === "" ? "hidden" : ""}">
+      ${escapeHtml(product.unidade)}
+    </span>
+  </div>
+
+  <button class="qty-btn" data-action="plus" ${isClosed ? "disabled" : ""}>+</button>
+</div>
       ${noteField}
     `;
 
     const btnMinus = card.querySelector('[data-action="minus"]');
     const btnPlus = card.querySelector('[data-action="plus"]');
     const qtyInput = card.querySelector(".qty-input");
+	const qtyUnit = card.querySelector(".qty-unit");
     const noteInput = card.querySelector(".note-input");
     const noteCounter = card.querySelector(".char-counter");
 
     btnMinus?.addEventListener("click", () => onMinus(productId));
     btnPlus?.addEventListener("click", () => onPlus(productId));
     qtyInput?.addEventListener("input", (e) => onInputQty(productId, e.target.value));
+	qtyInput?.addEventListener("focus", () => {
+    qtyUnit?.classList.add("hidden");
+    });
+
+	qtyInput?.addEventListener("blur", () => {
+	const currentValue = String(qtyInput.value || "").trim();
+
+	if (currentValue === "") {
+    qtyUnit?.classList.add("hidden");
+	} else {
+    qtyUnit?.classList.remove("hidden");
+	}
+	});
 
     noteInput?.addEventListener("input", (e) => {
       const value = String(e.target.value || "").slice(0, 20);
