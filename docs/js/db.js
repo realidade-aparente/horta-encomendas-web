@@ -13,18 +13,20 @@ export async function getCurrentWeekId() {
 }
 
 export async function getWeekData(weekId) {
-  const [metaSnap, estadoSnap, locaisSnap, produtosSnap] = await Promise.all([
+  const [metaSnap, estadoSnap, locaisSnap, produtosSemanaSnap, produtosGeraisSnap] = await Promise.all([
     get(ref(db, `semanas/${weekId}/meta`)),
     get(ref(db, `semanas/${weekId}/estado`)),
     get(ref(db, `semanas/${weekId}/locaisRecolha`)),
-    get(ref(db, `semanas/${weekId}/produtos`))
+    get(ref(db, `semanas/${weekId}/produtos`)),
+    get(ref(db, "produtosGerais"))
   ]);
 
   return {
     meta: metaSnap.exists() ? metaSnap.val() : {},
     estado: estadoSnap.exists() ? estadoSnap.val() : "fechada",
     locaisRecolha: locaisSnap.exists() ? locaisSnap.val() : [],
-    produtos: produtosSnap.exists() ? produtosSnap.val() : {}
+    produtosSemana: produtosSemanaSnap.exists() ? produtosSemanaSnap.val() : {},
+    produtosGerais: produtosGeraisSnap.exists() ? produtosGeraisSnap.val() : {}
   };
 }
 

@@ -35,6 +35,24 @@ export function renderPickupOptions(selectEl, options = [], selectedValue = "") 
   }
 }
 
+function getProductsEntries(products) {
+  if (Array.isArray(products)) {
+    return products
+      .filter(Boolean)
+      .map((product) => [product.id, product]);
+  }
+
+  return Object.entries(products || {});
+}
+
+function getProductById(products, productId) {
+  if (Array.isArray(products)) {
+    return products.find((product) => product?.id === productId) || null;
+  }
+
+  return products?.[productId] || null;
+}
+
 export function getDisplayedPrice(product) {
   const unidade = String(product?.unidade || "").toLowerCase();
   const precoKg = Number(product?.preco || 0);
@@ -59,6 +77,14 @@ function getDisplayUnit(unit, qty) {
     return quantidade === 1 ? "molho" : "molhos";
   }
 
+  if (unidade === "emb") {
+    return quantidade === 1 ? "emb" : "emb";
+  }
+
+  if (unidade === "un") {
+    return quantidade === 1 ? "un" : "un";
+  }
+
   return unit || "";
 }
 
@@ -74,22 +100,23 @@ export function renderProducts({
 }) {
   container.innerHTML = "";
 
-  const sorted = Object.entries(products || {}).sort((a, b) => {
-    const nomeA = String(a[1].nome || "").toLocaleLowerCase("pt-PT");
-    const nomeB = String(b[1].nome || "").toLocaleLowerCase("pt-PT");
+  const sorted = getProductsEntries(products)
+    .filter(([, product]) => product)
+    .filter(([, product]) => product.ativo !== false)
+    .filter(([, product]) => product.tipoAtividade !== "i")
+    .sort((a, b) => {
+      const nomeA = String(a[1].nome || "").toLocaleLowerCase("pt-PT");
+      const nomeB = String(b[1].nome || "").toLocaleLowerCase("pt-PT");
 
-    const cmp = nomeA.localeCompare(nomeB, "pt-PT");
-    if (cmp !== 0) return cmp;
+      const cmp = nomeA.localeCompare(nomeB, "pt-PT");
+      if (cmp !== 0) return cmp;
 
-    const orderA = a[1].ordem ?? 9999;
-    const orderB = b[1].ordem ?? 9999;
-    return orderA - orderB;
-  });
+      const orderA = a[1].ordem ?? 9999;
+      const orderB = b[1].ordem ?? 9999;
+      return orderA - orderB;
+    });
 
   for (const [productId, product] of sorted) {
-    if (product.ativo === false) continue;
-    if (product.tipoAtividade === "i") continue;
-
     const item = items[productId] || {};
     const qty = item.quantidade ?? "";
     const note = item.nota ?? "";
@@ -137,52 +164,53 @@ export function renderProducts({
       <div class="product-meta">${product.unidade}${gramsText} • ${money(displayedPrice)}</div>
       ${originText}
       ${commentText}
-<div class="qty-row">
-  <button class="qty-btn" data-action="minus" ${isClosed ? "disabled" : ""}>-</button>
+      <div class="qty-row">
+        <button class="qty-btn" data-action="minus" ${isClosed ? "disabled" : ""}>-</button>
 
-  <div class="qty-input-wrap">
-    <input
-      class="qty-input"
-      type="number"
-      inputmode="decimal"
-      step="${stepValue}"
-      min="0"
-      value="${qty}"
-      ${isClosed ? "disabled" : ""}
-    />
-	<span class="qty-unit ${qty === "" ? "hidden" : ""}">
-	  ${escapeHtml(getDisplayUnit(product.unidade, qty))}
-	</span>
-  </div>
+        <div class="qty-input-wrap">
+          <input
+            class="qty-input"
+            type="number"
+            inputmode="decimal"
+            step="${stepValue}"
+            min="0"
+            value="${qty}"
+            ${isClosed ? "disabled" : ""}
+          />
+          <span class="qty-unit ${qty === "" ? "hidden" : ""}">
+            ${escapeHtml(getDisplayUnit(product.unidade, qty))}
+          </span>
+        </div>
 
-  <button class="qty-btn" data-action="plus" ${isClosed ? "disabled" : ""}>+</button>
-</div>
+        <button class="qty-btn" data-action="plus" ${isClosed ? "disabled" : ""}>+</button>
+      </div>
       ${noteField}
     `;
 
     const btnMinus = card.querySelector('[data-action="minus"]');
     const btnPlus = card.querySelector('[data-action="plus"]');
     const qtyInput = card.querySelector(".qty-input");
-	const qtyUnit = card.querySelector(".qty-unit");
+    const qtyUnit = card.querySelector(".qty-unit");
     const noteInput = card.querySelector(".note-input");
     const noteCounter = card.querySelector(".char-counter");
 
     btnMinus?.addEventListener("click", () => onMinus(productId));
     btnPlus?.addEventListener("click", () => onPlus(productId));
     qtyInput?.addEventListener("input", (e) => onInputQty(productId, e.target.value));
-	qtyInput?.addEventListener("focus", () => {
-    qtyUnit?.classList.add("hidden");
+
+    qtyInput?.addEventListener("focus", () => {
+      qtyUnit?.classList.add("hidden");
     });
 
-	qtyInput?.addEventListener("blur", () => {
-	const currentValue = String(qtyInput.value || "").trim();
+    qtyInput?.addEventListener("blur", () => {
+      const currentValue = String(qtyInput.value || "").trim();
 
-	if (currentValue === "") {
-    qtyUnit?.classList.add("hidden");
-	} else {
-    qtyUnit?.classList.remove("hidden");
-	}
-	});
+      if (currentValue === "") {
+        qtyUnit?.classList.add("hidden");
+      } else {
+        qtyUnit?.classList.remove("hidden");
+      }
+    });
 
     noteInput?.addEventListener("input", (e) => {
       const value = String(e.target.value || "").slice(0, 20);
@@ -214,7 +242,7 @@ export function calculateSummary(products, items) {
 
   for (const [productId, item] of Object.entries(items || {})) {
     const qty = Number(item?.quantidade || 0);
-    const product = products[productId];
+    const product = getProductById(products, productId);
 
     if (qty > 0 && product) {
       lines += 1;
@@ -231,7 +259,7 @@ export function renderReview({ container, products, items, notasEncomenda = "" }
   for (const [productId, item] of Object.entries(items || {})) {
     const qty = Number(item?.quantidade || 0);
     const note = item?.nota || "";
-    const product = products[productId];
+    const product = getProductById(products, productId);
 
     if (!product || qty <= 0) continue;
 

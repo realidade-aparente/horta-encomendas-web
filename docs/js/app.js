@@ -30,7 +30,7 @@ function getCurrentWeekInfo() {
   const now = new Date();
   const localDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-  const day = localDate.getDay(); // 0=domingo, 1=segunda, ..., 6=sábado
+  const day = localDate.getDay();
   const diffToMonday = day === 0 ? -6 : 1 - day;
 
   const monday = new Date(localDate);
@@ -114,7 +114,7 @@ const state = {
   profile: null,
   weekId: null,
   weekData: null,
-  products: {},
+  products: [],
   items: {},
   pickupLocation: "",
   notasEncomenda: ""
@@ -134,13 +134,53 @@ function escapeHtml(value = "") {
     .replaceAll("'", "&#039;");
 }
 
+function buildWeeklyCatalog(produtosGerais = {}, produtosSemana = {}) {
+  const result = [];
+
+  for (const [productId, dadosSemana] of Object.entries(produtosSemana || {})) {
+    const dadosGeral = produtosGerais?.[productId];
+    if (!dadosGeral) continue;
+
+    const tipoAtividade = dadosGeral.tipoAtividade ?? "i";
+    if (tipoAtividade === "i") continue;
+
+    const item = {
+      id: productId,
+      nome: dadosGeral.nome ?? productId,
+      unidade: dadosGeral.unidade ?? "",
+      aceitaNotaCliente: !!dadosGeral.aceitaNotaCliente,
+      quantidadeComercializacaoGr: dadosGeral.quantidadeComercializacaoGr ?? 0,
+      tipoAtividade,
+      preco: dadosSemana.preco ?? dadosGeral.precoConsumidor ?? 0,
+      origem: dadosSemana.origem ?? dadosGeral.origemPadrao ?? "",
+      comentario: dadosSemana.comentario ?? dadosGeral.comentarioPadrao ?? "",
+      ordem: dadosSemana.ordem ?? dadosGeral.ordem ?? 999,
+      ativo: dadosSemana.ativo ?? true
+    };
+
+    result.push(item);
+  }
+
+  result.sort((a, b) => {
+    const ordemDiff = (a.ordem ?? 999) - (b.ordem ?? 999);
+    if (ordemDiff !== 0) return ordemDiff;
+    return String(a.nome || "").localeCompare(String(b.nome || ""), "pt");
+  });
+
+  return result;
+}
+
+function getProductById(productId) {
+  return state.products.find((product) => product?.id === productId) || null;
+}
+
 function buildOrderRowsHtml() {
   const rows = [];
 
   for (const [productId, item] of Object.entries(state.items || {})) {
     const qty = Number(item?.quantidade || 0);
     const note = item?.nota || "";
-    const product = state.products[productId];
+    const product = getProductById(productId);
 
     if (!product || qty <= 0) continue;
 
@@ -226,7 +266,7 @@ function renderAllProducts() {
     items: state.items,
     isClosed: state.weekData?.estado !== "aberta" || !state.user,
     onMinus: (productId) => {
-      const product = state.products[productId];
+      const product = getProductById(productId);
       const current = Number(state.items[productId]?.quantidade || 0);
       const step = getQuantityStepMinus(product, current);
       const next = Math.max(0, Number((current - step).toFixed(3)));
@@ -244,7 +284,7 @@ function renderAllProducts() {
       refreshSummary();
     },
     onPlus: (productId) => {
-      const product = state.products[productId];
+      const product = getProductById(productId);
       const unidade = String(product?.unidade || "").toLowerCase();
       const current = Number(state.items[productId]?.quantidade || 0);
 
@@ -271,7 +311,8 @@ function renderAllProducts() {
       refreshSummary();
     },
     onInputQty: (productId, value) => {
-      const normalized = normalizeQty(value, state.products[productId]);
+      const product = getProductById(productId);
+      const normalized = normalizeQty(value, product);
 
       if (normalized === "") {
         delete state.items[productId];
@@ -305,7 +346,7 @@ function buildOrderLinesText() {
   for (const [productId, item] of Object.entries(state.items || {})) {
     const qty = Number(item?.quantidade || 0);
     const note = item?.nota || "";
-    const product = state.products[productId];
+    const product = getProductById(productId);
 
     if (!product || qty <= 0) continue;
 
@@ -390,7 +431,10 @@ async function loadAppData() {
   els.weekLabel.textContent = currentWeek.weekLabel;
   setWeekStatus(els.weekStatus, state.weekData?.estado || "fechada");
 
-  state.products = state.weekData?.produtos || {};
+  state.products = buildWeeklyCatalog(
+    state.weekData?.produtosGerais || {},
+    state.weekData?.produtosSemana || {}
+  );
 
   const pickupOptions = state.weekData?.locaisRecolha || [
     "Quinta",
