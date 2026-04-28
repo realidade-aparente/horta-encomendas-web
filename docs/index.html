@@ -22,18 +22,37 @@
 
         <div class="form-group">
           <label for="loginEmail">Email</label>
-          <input id="loginEmail" type="email" placeholder="Endereço de email para contacto" />
+          <input
+            id="loginEmail"
+            type="email"
+            inputmode="email"
+            autocomplete="email"
+            placeholder="Endereço de email para contacto"
+            aria-describedby="loginEmailHelp loginEmailError"
+          />
+          <p id="loginEmailHelp" class="hint">Usa o mesmo email com que criaste a tua conta.</p>
+          <p id="loginEmailError" class="field-error hidden"></p>
         </div>
 
         <div class="form-group">
           <label for="loginPassword">Palavra-passe / PIN</label>
           <div class="password-field">
-            <input id="loginPassword" type="password" placeholder="Entre 6 e 10 caracteres" />
+            <input
+              id="loginPassword"
+              type="password"
+              autocomplete="current-password"
+              minlength="6"
+              maxlength="10"
+              pattern="[A-Za-zÀ-ÿ0-9 !&quot;#$%&'()*+,\-./:;<=>?@[\\\]^_`{|}~]+"
+              placeholder="Entre 6 e 10 caracteres"
+              aria-describedby="loginPasswordHelp loginPasswordError"
+            />
             <button id="btnToggleLoginPassword" type="button" class="icon-button secondary" aria-label="Mostrar ou esconder palavra-passe">👁</button>
           </div>
-          <p class="hint">
+          <p id="loginPasswordHelp" class="hint">
             Introduz a palavra-passe da tua conta para consultares ou atualizares a tua encomenda.
           </p>
+          <p id="loginPasswordError" class="field-error hidden"></p>
         </div>
 
         <div class="auth-actions auth-actions-single">
@@ -51,24 +70,43 @@
 
         <div class="form-group">
           <label for="registerEmail">Email</label>
-          <input id="registerEmail" type="email" placeholder="Endereço de email para contacto" />
+          <input
+            id="registerEmail"
+            type="email"
+            inputmode="email"
+            autocomplete="email"
+            placeholder="Endereço de email para contacto"
+            aria-describedby="registerEmailHelp registerEmailError"
+          />
+          <p id="registerEmailHelp" class="hint">Este email será usado para entrares e receberes a confirmação da encomenda.</p>
+          <p id="registerEmailError" class="field-error hidden"></p>
         </div>
 
         <div class="form-group">
           <label for="registerPassword">Palavra-passe / PIN</label>
           <div class="password-field">
-            <input id="registerPassword" type="password" placeholder="Entre 6 e 10 caracteres" />
+            <input
+              id="registerPassword"
+              type="password"
+              autocomplete="new-password"
+              minlength="6"
+              maxlength="10"
+              pattern="[A-Za-zÀ-ÿ0-9 !&quot;#$%&'()*+,\-./:;<=>?@[\\\]^_`{|}~]+"
+              placeholder="Entre 6 e 10 caracteres"
+              aria-describedby="registerPasswordHelp registerPasswordError"
+            />
             <button id="btnToggleRegisterPassword" type="button" class="icon-button secondary" aria-label="Mostrar ou esconder palavra-passe">👁</button>
           </div>
-          <p class="hint">
-            Define uma palavra-passe para entrares mais tarde e acederes à tua encomenda.
-            Pode ser um PIN numérico. Aceita números, letras e símbolos do teclado.
+          <p id="registerPasswordHelp" class="hint">
+            Entre 6 e 10 caracteres. Aceita números, letras e símbolos do teclado.
           </p>
+          <p id="registerPasswordError" class="field-error hidden"></p>
         </div>
 
         <div class="form-group">
           <label for="regName">Nome</label>
-          <input id="regName" type="text" placeholder="Nome de cliente" />
+          <input id="regName" type="text" placeholder="Nome de cliente" aria-describedby="regNameError" />
+          <p id="regNameError" class="field-error hidden"></p>
         </div>
 
         <div class="form-group">
