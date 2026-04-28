@@ -73,11 +73,21 @@ const els = {
   secApp: document.getElementById("secApp"),
   secClosed: document.getElementById("secClosed"),
 
-  authEmail: document.getElementById("authEmail"),
-  authPassword: document.getElementById("authPassword"),
+  loginPanel: document.getElementById("loginPanel"),
+  registerPanel: document.getElementById("registerPanel"),
+
+  loginEmail: document.getElementById("loginEmail"),
+  loginPassword: document.getElementById("loginPassword"),
+  registerEmail: document.getElementById("registerEmail"),
+  registerPassword: document.getElementById("registerPassword"),
+
+  btnToggleLoginPassword: document.getElementById("btnToggleLoginPassword"),
+  btnToggleRegisterPassword: document.getElementById("btnToggleRegisterPassword"),
+  btnShowRegister: document.getElementById("btnShowRegister"),
+  btnShowLogin: document.getElementById("btnShowLogin"),
+
   regName: document.getElementById("regName"),
   regPhone: document.getElementById("regPhone"),
-  registerExtra: document.getElementById("registerExtra"),
   authMessage: document.getElementById("authMessage"),
   btnLogin: document.getElementById("btnLogin"),
   btnRegister: document.getElementById("btnRegister"),
@@ -91,6 +101,7 @@ const els = {
 
   pickupLocation: document.getElementById("pickupLocation"),
   productsList: document.getElementById("productsList"),
+  summaryBar: document.getElementById("summaryBar"),
   summaryLines: document.getElementById("summaryLines"),
   summaryTotal: document.getElementById("summaryTotal"),
 
@@ -123,6 +134,34 @@ const state = {
 function setMessage(msg, isError = false) {
   els.authMessage.textContent = msg;
   els.authMessage.style.color = isError ? "#b00020" : "#2f7d32";
+}
+
+function clearAuthMessage() {
+  setMessage("", false);
+}
+
+function showLoginPanel() {
+  show(els.loginPanel);
+  hide(els.registerPanel);
+  clearAuthMessage();
+}
+
+function showRegisterPanel() {
+  hide(els.loginPanel);
+  show(els.registerPanel);
+  clearAuthMessage();
+}
+
+function setPasswordVisibility(inputEl, buttonEl, visible) {
+  if (!inputEl || !buttonEl) return;
+  inputEl.type = visible ? "text" : "password";
+  buttonEl.textContent = visible ? "🙈" : "👁";
+}
+
+function togglePasswordVisibility(inputEl, buttonEl) {
+  if (!inputEl || !buttonEl) return;
+  const isVisible = inputEl.type === "text";
+  setPasswordVisibility(inputEl, buttonEl, !isVisible);
 }
 
 function escapeHtml(value = "") {
@@ -488,19 +527,34 @@ async function loadAppData() {
     hide(els.secClosed);
   }
 
+  if (state.user) {
+    show(els.summaryBar);
+  } else {
+    hide(els.summaryBar);
+  }
+
   renderAllProducts();
   refreshSummary();
 }
 
 async function handleRegister() {
-  const email = els.authEmail.value.trim();
-  const password = els.authPassword.value.trim();
+  const email = els.registerEmail.value.trim();
+  const password = els.registerPassword.value.trim();
   const nome = els.regName.value.trim();
   const telefone = els.regPhone.value.trim();
 
+  if (!email) {
+    setMessage("Preenche o email para criar conta.", true);
+    return;
+  }
+
+  if (!password) {
+    setMessage("Preenche a palavra-passe para criar conta.", true);
+    return;
+  }
+
   if (!nome) {
     setMessage("Preenche o nome para criar conta.", true);
-    show(els.registerExtra);
     return;
   }
 
@@ -520,15 +574,14 @@ async function handleRegister() {
 }
 
 async function handleLogin() {
-  const email = els.authEmail.value.trim();
-  const password = els.authPassword.value.trim();
+  const email = els.loginEmail.value.trim();
+  const password = els.loginPassword.value.trim();
 
   try {
     await signInWithEmailAndPassword(auth, email, password);
     setMessage("Sessão iniciada.");
   } catch (err) {
-    show(els.registerExtra);
-    setMessage("Não foi possível entrar. Se ainda não tens conta, preenche o nome e cria conta.", true);
+    setMessage("Não foi possível entrar. Se já tens conta verifica se os dados inseridos estão corretos. Se ainda não tens conta, usa o botão “Novo registo”.", true);
   }
 }
 
@@ -625,10 +678,22 @@ function openReview() {
 
 function bindEvents() {
   els.btnLogin.addEventListener("click", handleLogin);
+  els.btnRegister.addEventListener("click", handleRegister);
 
-  els.btnRegister.addEventListener("click", () => {
-    show(els.registerExtra);
-    handleRegister();
+  els.btnShowRegister.addEventListener("click", () => {
+    showRegisterPanel();
+  });
+
+  els.btnShowLogin.addEventListener("click", () => {
+    showLoginPanel();
+  });
+
+  els.btnToggleLoginPassword.addEventListener("click", () => {
+    togglePasswordVisibility(els.loginPassword, els.btnToggleLoginPassword);
+  });
+
+  els.btnToggleRegisterPassword.addEventListener("click", () => {
+    togglePasswordVisibility(els.registerPassword, els.btnToggleRegisterPassword);
   });
 
   els.btnLogout.addEventListener("click", async () => {
@@ -672,6 +737,7 @@ function initAuthObserver() {
         await loadAppData();
         show(els.secAuth);
         show(els.secApp);
+        showLoginPanel();
       } catch (err) {
         console.error(err);
         alert("Erro ao carregar dados.");
