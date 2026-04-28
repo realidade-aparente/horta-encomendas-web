@@ -17,36 +17,68 @@
 
     <!-- AUTH -->
     <section id="secAuth" class="card">
-      <h2>Entrar / Registar</h2>
+      <div id="loginPanel">
+        <h2>Entrar</h2>
 
-      <div class="form-group">
-        <label for="authEmail">Email</label>
-        <input id="authEmail" type="email" placeholder="nome@email.com" />
+        <div class="form-group">
+          <label for="loginEmail">Email</label>
+          <input id="loginEmail" type="email" placeholder="Endereço de email para contacto" />
+        </div>
+
+        <div class="form-group">
+          <label for="loginPassword">Palavra-passe / PIN</label>
+          <div class="password-field">
+            <input id="loginPassword" type="password" placeholder="Entre 6 e 10 caracteres" />
+            <button id="btnToggleLoginPassword" type="button" class="icon-button secondary" aria-label="Mostrar ou esconder palavra-passe">👁</button>
+          </div>
+          <p class="hint">
+            Introduz a palavra-passe da tua conta para consultares ou atualizares a tua encomenda.
+          </p>
+        </div>
+
+        <div class="auth-actions auth-actions-single">
+          <button id="btnLogin">Entrar</button>
+        </div>
+
+        <div class="auth-switch-row">
+          <span class="hint">Ainda não tens conta?</span>
+          <button id="btnShowRegister" type="button" class="text-button">Novo registo</button>
+        </div>
       </div>
 
-      <div class="form-group">
-        <label for="authPassword">Palavra-passe / PIN</label>
-        <input id="authPassword" type="password" placeholder="Entre 6 e 10 caracteres" />
-        <p class="hint">
-          Define uma palavra-passe para entrares mais tarde e acederes à tua encomenda.
-          Pode ser um PIN. Aceita números, letras e símbolos do teclado.
-        </p>
-      </div>
+      <div id="registerPanel" class="hidden">
+        <h2>Registar</h2>
 
-      <div class="auth-actions">
-        <button id="btnLogin">Entrar</button>
-        <button id="btnRegister" class="secondary">Criar conta</button>
-      </div>
+        <div class="form-group">
+          <label for="registerEmail">Email</label>
+          <input id="registerEmail" type="email" placeholder="Endereço de email para contacto" />
+        </div>
 
-      <div id="registerExtra" class="hidden">
+        <div class="form-group">
+          <label for="registerPassword">Palavra-passe / PIN</label>
+          <div class="password-field">
+            <input id="registerPassword" type="password" placeholder="Entre 6 e 10 caracteres" />
+            <button id="btnToggleRegisterPassword" type="button" class="icon-button secondary" aria-label="Mostrar ou esconder palavra-passe">👁</button>
+          </div>
+          <p class="hint">
+            Define uma palavra-passe para entrares mais tarde e acederes à tua encomenda.
+            Pode ser um PIN numérico. Aceita números, letras e símbolos do teclado.
+          </p>
+        </div>
+
         <div class="form-group">
           <label for="regName">Nome</label>
-          <input id="regName" type="text" placeholder="Nome do cliente" />
+          <input id="regName" type="text" placeholder="Nome de cliente" />
         </div>
 
         <div class="form-group">
           <label for="regPhone">Telefone</label>
           <input id="regPhone" type="tel" placeholder="Opcional" />
+        </div>
+
+        <div class="auth-actions">
+          <button id="btnRegister">Registar</button>
+          <button id="btnShowLogin" type="button" class="secondary">Voltar a entrar</button>
         </div>
       </div>
 
@@ -92,7 +124,6 @@
       <section class="card">
         <h2>Notas gerais</h2>
         <div class="form-group">
-          <!-- <label for="orderNotes">Notas gerais</label> -->
           <textarea
             id="orderNotes"
             maxlength="100"
@@ -105,16 +136,16 @@
         <p class="hint"></p><br>
       </section>
 
-      <section class="summary-bar">
+      <section id="summaryBar" class="summary-bar hidden">
         <div>
           <strong id="summaryLines">0 produtos</strong>
           <div id="summaryTotal">Total estimado: 0,00 €</div>
           <p class="hint">Prime o botão "Resumo" para poder submeter a encomenda.</p>
         </div>
-		<div class="summary-actions">
-			<button id="btnReview">Resumo</button>
-			<button id="btnSaveOrder" class="secondary">Guardar rascunho</button>
-		</div>
+        <div class="summary-actions">
+          <button id="btnReview">Resumo</button>
+          <button id="btnSaveOrder" class="secondary">Guardar rascunho</button>
+        </div>
       </section>
     </section>
 
