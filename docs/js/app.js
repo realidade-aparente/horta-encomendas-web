@@ -59,6 +59,10 @@ function getCurrentWeekInfo() {
 const EMAILJS_PUBLIC_KEY = "hgrb7V-u6GGGCYUTa";
 const EMAILJS_SERVICE_ID = "service_ja0vggr";
 const EMAILJS_TEMPLATE_CLIENTE = "template_08hxlen";
+const PASSWORD_MIN_LENGTH = 6;
+const PASSWORD_MAX_LENGTH = 10;
+const PASSWORD_ALLOWED_REGEX = /^[A-Za-zÀ-ÿ0-9 !"#$%&'()*+,\-./:;<=>?@[\\\]^_`{|}~]+$/;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function initEmailJS() {
   if (window.emailjs) {
@@ -80,6 +84,12 @@ const els = {
   loginPassword: document.getElementById("loginPassword"),
   registerEmail: document.getElementById("registerEmail"),
   registerPassword: document.getElementById("registerPassword"),
+
+  loginEmailError: document.getElementById("loginEmailError"),
+  loginPasswordError: document.getElementById("loginPasswordError"),
+  registerEmailError: document.getElementById("registerEmailError"),
+  registerPasswordError: document.getElementById("registerPasswordError"),
+  regNameError: document.getElementById("regNameError"),
 
   btnToggleLoginPassword: document.getElementById("btnToggleLoginPassword"),
   btnToggleRegisterPassword: document.getElementById("btnToggleRegisterPassword"),
@@ -140,16 +150,51 @@ function clearAuthMessage() {
   setMessage("", false);
 }
 
+function setFieldError(inputEl, errorEl, message) {
+  if (!inputEl || !errorEl) return false;
+  inputEl.classList.add("input-error");
+  inputEl.classList.remove("input-valid");
+  errorEl.textContent = message;
+  errorEl.classList.remove("hidden");
+  return false;
+}
+
+function setFieldValid(inputEl, errorEl) {
+  if (!inputEl || !errorEl) return true;
+  inputEl.classList.remove("input-error");
+  inputEl.classList.add("input-valid");
+  errorEl.textContent = "";
+  errorEl.classList.add("hidden");
+  return true;
+}
+
+function clearFieldState(inputEl, errorEl) {
+  if (!inputEl || !errorEl) return;
+  inputEl.classList.remove("input-error", "input-valid");
+  errorEl.textContent = "";
+  errorEl.classList.add("hidden");
+}
+
+function clearAllAuthFieldStates() {
+  clearFieldState(els.loginEmail, els.loginEmailError);
+  clearFieldState(els.loginPassword, els.loginPasswordError);
+  clearFieldState(els.registerEmail, els.registerEmailError);
+  clearFieldState(els.registerPassword, els.registerPasswordError);
+  clearFieldState(els.regName, els.regNameError);
+}
+
 function showLoginPanel() {
   show(els.loginPanel);
   hide(els.registerPanel);
   clearAuthMessage();
+  clearAllAuthFieldStates();
 }
 
 function showRegisterPanel() {
   hide(els.loginPanel);
   show(els.registerPanel);
   clearAuthMessage();
+  clearAllAuthFieldStates();
 }
 
 function setPasswordVisibility(inputEl, buttonEl, visible) {
@@ -162,6 +207,75 @@ function togglePasswordVisibility(inputEl, buttonEl) {
   if (!inputEl || !buttonEl) return;
   const isVisible = inputEl.type === "text";
   setPasswordVisibility(inputEl, buttonEl, !isVisible);
+}
+
+function validateEmailField(inputEl, errorEl, { required = true } = {}) {
+  const value = String(inputEl?.value || "").trim();
+
+  if (!value) {
+    if (!required) {
+      clearFieldState(inputEl, errorEl);
+      return true;
+    }
+    return setFieldError(inputEl, errorEl, "Preenche o endereço de email.");
+  }
+
+  if (!EMAIL_REGEX.test(value)) {
+    return setFieldError(inputEl, errorEl, "Introduz um endereço de email válido.");
+  }
+
+  return setFieldValid(inputEl, errorEl);
+}
+
+function validatePasswordField(inputEl, errorEl, { required = true } = {}) {
+  const value = String(inputEl?.value || "");
+
+  if (!value) {
+    if (!required) {
+      clearFieldState(inputEl, errorEl);
+      return true;
+    }
+    return setFieldError(inputEl, errorEl, "Preenche a palavra-passe.");
+  }
+
+  if (value.length < PASSWORD_MIN_LENGTH) {
+    return setFieldError(inputEl, errorEl, `A palavra-passe deve ter pelo menos ${PASSWORD_MIN_LENGTH} caracteres.`);
+  }
+
+  if (value.length > PASSWORD_MAX_LENGTH) {
+    return setFieldError(inputEl, errorEl, `A palavra-passe deve ter no máximo ${PASSWORD_MAX_LENGTH} caracteres.`);
+  }
+
+  if (!PASSWORD_ALLOWED_REGEX.test(value)) {
+    return setFieldError(inputEl, errorEl, "Usa apenas letras, números e símbolos normais do teclado.");
+  }
+
+  return setFieldValid(inputEl, errorEl);
+}
+
+function validateNameField(inputEl, errorEl) {
+  const value = String(inputEl?.value || "").trim();
+
+  if (!value) {
+    return setFieldError(inputEl, errorEl, "Preenche o nome para criar conta.");
+  }
+
+  return setFieldValid(inputEl, errorEl);
+}
+
+function validateLoginForm() {
+  clearAuthMessage();
+  const emailOk = validateEmailField(els.loginEmail, els.loginEmailError);
+  const passwordOk = validatePasswordField(els.loginPassword, els.loginPasswordError);
+  return emailOk && passwordOk;
+}
+
+function validateRegisterForm() {
+  clearAuthMessage();
+  const emailOk = validateEmailField(els.registerEmail, els.registerEmailError);
+  const passwordOk = validatePasswordField(els.registerPassword, els.registerPasswordError);
+  const nameOk = validateNameField(els.regName, els.regNameError);
+  return emailOk && passwordOk && nameOk;
 }
 
 function escapeHtml(value = "") {
@@ -538,25 +652,12 @@ async function loadAppData() {
 }
 
 async function handleRegister() {
+  if (!validateRegisterForm()) return;
+
   const email = els.registerEmail.value.trim();
-  const password = els.registerPassword.value.trim();
+  const password = els.registerPassword.value;
   const nome = els.regName.value.trim();
   const telefone = els.regPhone.value.trim();
-
-  if (!email) {
-    setMessage("Preenche o email para criar conta.", true);
-    return;
-  }
-
-  if (!password) {
-    setMessage("Preenche a palavra-passe para criar conta.", true);
-    return;
-  }
-
-  if (!nome) {
-    setMessage("Preenche o nome para criar conta.", true);
-    return;
-  }
 
   try {
     const cred = await createUserWithEmailAndPassword(auth, email, password);
@@ -574,14 +675,16 @@ async function handleRegister() {
 }
 
 async function handleLogin() {
+  if (!validateLoginForm()) return;
+
   const email = els.loginEmail.value.trim();
-  const password = els.loginPassword.value.trim();
+  const password = els.loginPassword.value;
 
   try {
     await signInWithEmailAndPassword(auth, email, password);
     setMessage("Sessão iniciada.");
   } catch (err) {
-    setMessage("Não foi possível entrar. Se já tens conta verifica se os dados inseridos estão corretos. Se ainda não tens conta, usa o botão “Novo registo”.", true);
+    setMessage("Não foi possível entrar. Verifica se o email e a palavra-passe estão corretos.", true);
   }
 }
 
@@ -676,6 +779,48 @@ function openReview() {
   show(els.reviewModal);
 }
 
+function bindValidationEvents() {
+  els.loginEmail.addEventListener("blur", () => {
+    validateEmailField(els.loginEmail, els.loginEmailError, { required: true });
+  });
+
+  els.loginPassword.addEventListener("blur", () => {
+    validatePasswordField(els.loginPassword, els.loginPasswordError, { required: true });
+  });
+
+  els.registerEmail.addEventListener("blur", () => {
+    validateEmailField(els.registerEmail, els.registerEmailError, { required: true });
+  });
+
+  els.registerPassword.addEventListener("blur", () => {
+    validatePasswordField(els.registerPassword, els.registerPasswordError, { required: true });
+  });
+
+  els.regName.addEventListener("blur", () => {
+    validateNameField(els.regName, els.regNameError);
+  });
+
+  els.loginEmail.addEventListener("input", () => {
+    clearFieldState(els.loginEmail, els.loginEmailError);
+  });
+
+  els.loginPassword.addEventListener("input", () => {
+    clearFieldState(els.loginPassword, els.loginPasswordError);
+  });
+
+  els.registerEmail.addEventListener("input", () => {
+    clearFieldState(els.registerEmail, els.registerEmailError);
+  });
+
+  els.registerPassword.addEventListener("input", () => {
+    clearFieldState(els.registerPassword, els.registerPasswordError);
+  });
+
+  els.regName.addEventListener("input", () => {
+    clearFieldState(els.regName, els.regNameError);
+  });
+}
+
 function bindEvents() {
   els.btnLogin.addEventListener("click", handleLogin);
   els.btnRegister.addEventListener("click", handleRegister);
@@ -725,6 +870,8 @@ function bindEvents() {
       els.orderNotesCounter.textContent = `${value.length}/100`;
     }
   });
+
+  bindValidationEvents();
 }
 
 function initAuthObserver() {
