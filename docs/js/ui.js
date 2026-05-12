@@ -157,7 +157,7 @@ export function renderProducts({
       : "";
 
     const card = document.createElement("div");
-    card.className = "product-card";
+    card.className = `product-card ${qty !== "" && Number(qty) > 0 ? "product-card-selected" : ""}`.trim();
 
     card.innerHTML = `
       <div class="product-title">${product.nome}</div>

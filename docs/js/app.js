@@ -43,16 +43,28 @@ function getCurrentWeekInfo() {
     ((isoDate - firstThursday) / 86400000 - 3 + ((firstThursday.getUTCDay() + 6) % 7)) / 7
   );
 
-  const yyyy = monday.getFullYear();
-  const mm = String(monday.getMonth() + 1).padStart(2, "0");
-  const dd = String(monday.getDate()).padStart(2, "0");
-  const weekId = `${yyyy}-${mm}-${dd}`;
-  const weekLabel = `Semana ${String(weekNumber).padStart(2, "0")} - ${weekId}`;
+  const mondayYyyy = monday.getFullYear();
+  const mondayMm = String(monday.getMonth() + 1).padStart(2, "0");
+  const mondayDd = String(monday.getDate()).padStart(2, "0");
+  const weekId = `${mondayYyyy}-${mondayMm}-${mondayDd}`;
+
+  const currentYyyy = localDate.getFullYear();
+  const currentMm = String(localDate.getMonth() + 1).padStart(2, "0");
+  const currentDd = String(localDate.getDate()).padStart(2, "0");
+  const currentDateLabel = `${currentYyyy}-${currentMm}-${currentDd}`;
+
+  const weekdayLabel = new Intl.DateTimeFormat("pt-PT", { weekday: "long" })
+    .format(localDate)
+    .toLowerCase();
+
+  const weekLabel = `Semana ${String(weekNumber).padStart(2, "0")} - ${currentDateLabel} (${weekdayLabel})`;
 
   return {
     weekId,
     weekNumber,
-    weekLabel
+    weekLabel,
+    currentDateLabel,
+    weekdayLabel
   };
 }
 
