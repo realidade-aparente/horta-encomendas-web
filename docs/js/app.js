@@ -1024,7 +1024,7 @@ async function loadAppData() {
     }
 
     els.customerName.textContent = "Visitante";
-    els.customerEmail.textContent = "Inicia sessão para guardar a encomenda";
+    els.customerEmail.textContent = "Inicia sessão para criar uma nova encomenda ou editar e guardar uma encomenda existente";
     els.lastUpdate.textContent = "Sem registo";
 
     if (els.accountPanel) {
