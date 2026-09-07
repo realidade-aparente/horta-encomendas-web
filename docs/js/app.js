@@ -101,6 +101,14 @@ const els = {
   btnShowRegister: document.getElementById("btnShowRegister"),
   btnShowLogin: document.getElementById("btnShowLogin"),
 
+  btnShowLoggedOutReset: document.getElementById("btnShowLoggedOutReset"),
+  loggedOutResetPanel: document.getElementById("loggedOutResetPanel"),
+  loggedOutResetEmail: document.getElementById("loggedOutResetEmail"),
+  loggedOutResetEmailError: document.getElementById("loggedOutResetEmailError"),
+  loggedOutResetMessage: document.getElementById("loggedOutResetMessage"),
+  btnSendLoggedOutReset: document.getElementById("btnSendLoggedOutReset"),
+  btnCancelLoggedOutReset: document.getElementById("btnCancelLoggedOutReset"),
+
   regName: document.getElementById("regName"),
   regPhone: document.getElementById("regPhone"),
   authMessage: document.getElementById("authMessage"),
@@ -179,6 +187,81 @@ function setMessage(msg, isError = false) {
 
 function clearAuthMessage() {
   setMessage("", false);
+}
+
+function setLoggedOutResetMessage(msg, isError = false) {
+  if (!els.loggedOutResetMessage) return;
+  els.loggedOutResetMessage.textContent = msg;
+  els.loggedOutResetMessage.style.color = isError ? "#b00020" : "#2f7d32";
+}
+
+function clearLoggedOutResetMessage() {
+  setLoggedOutResetMessage("", false);
+}
+
+function openLoggedOutResetPanel() {
+  if (!els.loggedOutResetPanel) return;
+
+  clearLoggedOutResetMessage();
+  clearFieldState(
+    els.loggedOutResetEmail,
+    els.loggedOutResetEmailError
+  );
+
+  const loginEmail = String(els.loginEmail?.value || "").trim();
+
+  if (loginEmail && EMAIL_REGEX.test(loginEmail)) {
+    els.loggedOutResetEmail.value = loginEmail;
+  }
+
+  show(els.loggedOutResetPanel);
+
+  setTimeout(() => {
+    els.loggedOutResetEmail?.focus();
+  }, 0);
+}
+
+function closeLoggedOutResetPanel() {
+  if (!els.loggedOutResetPanel) return;
+
+  hide(els.loggedOutResetPanel);
+  clearLoggedOutResetMessage();
+  clearFieldState(
+    els.loggedOutResetEmail,
+    els.loggedOutResetEmailError
+  );
+}
+
+async function handleLoggedOutPasswordReset() {
+  clearLoggedOutResetMessage();
+
+  const emailOk = validateEmailField(
+    els.loggedOutResetEmail,
+    els.loggedOutResetEmailError,
+    { required: true }
+  );
+
+  if (!emailOk) return;
+
+  const email = els.loggedOutResetEmail.value.trim();
+
+  try {
+    await sendPasswordResetEmail(auth, email);
+
+    setLoggedOutResetMessage(
+      `Se existir uma conta associada a ${email}, receberás um email com as instruções para redefinir a palavra-passe.`
+    );
+  } catch (err) {
+    console.error("Erro ao enviar recuperação de palavra-passe:", err);
+
+    setLoggedOutResetMessage(
+      getFriendlyAuthError(
+        err,
+        "Não foi possível enviar o email de recuperação. Tenta novamente."
+      ),
+      true
+    );
+  }
 }
 
 function setAccountMessage(msg, isError = false) {
@@ -495,6 +578,7 @@ function clearAllAuthFieldStates() {
 function showLoginPanel() {
   show(els.loginPanel);
   hide(els.registerPanel);
+  closeLoggedOutResetPanel();
   clearAuthMessage();
   clearAllAuthFieldStates();
 }
@@ -502,6 +586,7 @@ function showLoginPanel() {
 function showRegisterPanel() {
   hide(els.loginPanel);
   show(els.registerPanel);
+  closeLoggedOutResetPanel();
   clearAuthMessage();
   clearAllAuthFieldStates();
 }
@@ -1137,6 +1222,24 @@ function bindValidationEvents() {
     clearFieldState(els.regName, els.regNameError);
   });
 
+  els.loggedOutResetEmail?.addEventListener("input", () => {
+    clearFieldState(
+      els.loggedOutResetEmail,
+      els.loggedOutResetEmailError
+    );
+    clearLoggedOutResetMessage();
+  });
+
+  els.loggedOutResetEmail?.addEventListener("blur", () => {
+    if (String(els.loggedOutResetEmail?.value || "").trim()) {
+      validateEmailField(
+        els.loggedOutResetEmail,
+        els.loggedOutResetEmailError,
+        { required: true }
+      );
+    }
+  });
+
   els.accountName?.addEventListener("input", () => {
     clearFieldState(els.accountName, els.accountNameError);
   });
@@ -1204,6 +1307,25 @@ function bindEvents() {
 
   els.btnShowLogin.addEventListener("click", () => {
     showLoginPanel();
+  });
+
+  els.btnShowLoggedOutReset?.addEventListener("click", () => {
+    openLoggedOutResetPanel();
+  });
+
+  els.btnCancelLoggedOutReset?.addEventListener("click", () => {
+    closeLoggedOutResetPanel();
+  });
+
+  els.btnSendLoggedOutReset?.addEventListener("click", async () => {
+    await handleLoggedOutPasswordReset();
+  });
+
+  els.loggedOutResetEmail?.addEventListener("keydown", async (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      await handleLoggedOutPasswordReset();
+    }
   });
 
   els.btnToggleLoginPassword.addEventListener("click", () => {
@@ -1307,6 +1429,10 @@ function initAuthObserver() {
 
     state.uid = user.uid;
     state.user = user;
+
+    if (els.loggedOutResetPanel) {
+      hide(els.loggedOutResetPanel);
+    }
 
     try {
       await loadAppData();
