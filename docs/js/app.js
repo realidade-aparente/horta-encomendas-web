@@ -2,7 +2,12 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
-  onAuthStateChanged
+  onAuthStateChanged,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
+  updateEmail,
+  updatePassword,
+  sendPasswordResetEmail
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
 import { auth } from "./firebase-config.js";
@@ -43,28 +48,16 @@ function getCurrentWeekInfo() {
     ((isoDate - firstThursday) / 86400000 - 3 + ((firstThursday.getUTCDay() + 6) % 7)) / 7
   );
 
-  const mondayYyyy = monday.getFullYear();
-  const mondayMm = String(monday.getMonth() + 1).padStart(2, "0");
-  const mondayDd = String(monday.getDate()).padStart(2, "0");
-  const weekId = `${mondayYyyy}-${mondayMm}-${mondayDd}`;
-
-  const currentYyyy = localDate.getFullYear();
-  const currentMm = String(localDate.getMonth() + 1).padStart(2, "0");
-  const currentDd = String(localDate.getDate()).padStart(2, "0");
-  const currentDateLabel = `${currentYyyy}-${currentMm}-${currentDd}`;
-
-  const weekdayLabel = new Intl.DateTimeFormat("pt-PT", { weekday: "long" })
-    .format(localDate)
-    .toLowerCase();
-
-  const weekLabel = `Semana ${String(weekNumber).padStart(2, "0")} - ${currentDateLabel} (${weekdayLabel})`;
+  const yyyy = monday.getFullYear();
+  const mm = String(monday.getMonth() + 1).padStart(2, "0");
+  const dd = String(monday.getDate()).padStart(2, "0");
+  const weekId = `${yyyy}-${mm}-${dd}`;
+  const weekLabel = `Semana ${String(weekNumber).padStart(2, "0")} - ${weekId}`;
 
   return {
     weekId,
     weekNumber,
-    weekLabel,
-    currentDateLabel,
-    weekdayLabel
+    weekLabel
   };
 }
 
@@ -115,6 +108,32 @@ const els = {
   btnRegister: document.getElementById("btnRegister"),
   btnLogout: document.getElementById("btnLogout"),
 
+  btnToggleAccount: document.getElementById("btnToggleAccount"),
+  btnCloseAccount: document.getElementById("btnCloseAccount"),
+  accountPanel: document.getElementById("accountPanel"),
+  accountName: document.getElementById("accountName"),
+  accountPhone: document.getElementById("accountPhone"),
+  accountEmail: document.getElementById("accountEmail"),
+  accountCurrentPasswordEmail: document.getElementById("accountCurrentPasswordEmail"),
+  accountCurrentPassword: document.getElementById("accountCurrentPassword"),
+  accountNewPassword: document.getElementById("accountNewPassword"),
+  accountConfirmPassword: document.getElementById("accountConfirmPassword"),
+  accountNameError: document.getElementById("accountNameError"),
+  accountEmailError: document.getElementById("accountEmailError"),
+  accountCurrentPasswordEmailError: document.getElementById("accountCurrentPasswordEmailError"),
+  accountCurrentPasswordError: document.getElementById("accountCurrentPasswordError"),
+  accountNewPasswordError: document.getElementById("accountNewPasswordError"),
+  accountConfirmPasswordError: document.getElementById("accountConfirmPasswordError"),
+  accountMessage: document.getElementById("accountMessage"),
+  btnSaveProfile: document.getElementById("btnSaveProfile"),
+  btnChangeEmail: document.getElementById("btnChangeEmail"),
+  btnChangePassword: document.getElementById("btnChangePassword"),
+  btnResetPassword: document.getElementById("btnResetPassword"),
+  btnToggleAccountCurrentPasswordEmail: document.getElementById("btnToggleAccountCurrentPasswordEmail"),
+  btnToggleAccountCurrentPassword: document.getElementById("btnToggleAccountCurrentPassword"),
+  btnToggleAccountNewPassword: document.getElementById("btnToggleAccountNewPassword"),
+  btnToggleAccountConfirmPassword: document.getElementById("btnToggleAccountConfirmPassword"),
+
   weekLabel: document.getElementById("weekLabel"),
   weekStatus: document.getElementById("weekStatus"),
   customerName: document.getElementById("customerName"),
@@ -160,6 +179,284 @@ function setMessage(msg, isError = false) {
 
 function clearAuthMessage() {
   setMessage("", false);
+}
+
+function setAccountMessage(msg, isError = false) {
+  if (!els.accountMessage) return;
+  els.accountMessage.textContent = msg;
+  els.accountMessage.style.color = isError ? "#b00020" : "#2f7d32";
+  els.accountMessage.style.background = msg
+    ? (isError ? "#fff3f5" : "#f3faf4")
+    : "#f7f7f7";
+}
+
+function clearAccountMessage() {
+  setAccountMessage("", false);
+}
+
+function populateAccountPanel() {
+  if (!state.user || !state.profile) return;
+
+  if (els.accountName) {
+    els.accountName.value = state.profile?.nome || "";
+  }
+
+  if (els.accountPhone) {
+    els.accountPhone.value = state.profile?.telefone || "";
+  }
+
+  if (els.accountEmail) {
+    els.accountEmail.value = state.user?.email || state.profile?.email || "";
+  }
+
+  if (els.accountCurrentPasswordEmail) els.accountCurrentPasswordEmail.value = "";
+  if (els.accountCurrentPassword) els.accountCurrentPassword.value = "";
+  if (els.accountNewPassword) els.accountNewPassword.value = "";
+  if (els.accountConfirmPassword) els.accountConfirmPassword.value = "";
+
+  clearAccountMessage();
+
+  clearFieldState(els.accountName, els.accountNameError);
+  clearFieldState(els.accountEmail, els.accountEmailError);
+  clearFieldState(els.accountCurrentPasswordEmail, els.accountCurrentPasswordEmailError);
+  clearFieldState(els.accountCurrentPassword, els.accountCurrentPasswordError);
+  clearFieldState(els.accountNewPassword, els.accountNewPasswordError);
+  clearFieldState(els.accountConfirmPassword, els.accountConfirmPasswordError);
+}
+
+function openAccountPanel() {
+  if (!state.user) return;
+  populateAccountPanel();
+  show(els.accountPanel);
+  els.accountPanel?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function closeAccountPanel() {
+  hide(els.accountPanel);
+  clearAccountMessage();
+}
+
+function getFriendlyAuthError(err, fallback) {
+  const code = String(err?.code || "");
+
+  const messages = {
+    "auth/invalid-credential": "A palavra-passe atual não está correta.",
+    "auth/wrong-password": "A palavra-passe atual não está correta.",
+    "auth/requires-recent-login": "Por segurança, volta a iniciar sessão e tenta novamente.",
+    "auth/email-already-in-use": "Esse endereço de email já está associado a outra conta.",
+    "auth/invalid-email": "O endereço de email não é válido.",
+    "auth/weak-password": "A nova palavra-passe não cumpre os requisitos mínimos.",
+    "auth/too-many-requests": "Foram feitas demasiadas tentativas. Tenta novamente mais tarde.",
+    "auth/network-request-failed": "Não foi possível comunicar com o serviço. Verifica a ligação à internet."
+  };
+
+  return messages[code] || fallback;
+}
+
+async function reauthenticateCurrentUser(currentPassword) {
+  if (!state.user?.email) {
+    throw new Error("Não foi possível identificar o email atual da conta.");
+  }
+
+  const credential = EmailAuthProvider.credential(
+    state.user.email,
+    currentPassword
+  );
+
+  await reauthenticateWithCredential(state.user, credential);
+}
+
+async function handleSaveProfile() {
+  if (!state.user || !state.uid || !state.profile) return;
+
+  clearAccountMessage();
+
+  const nomeOk = validateNameField(els.accountName, els.accountNameError);
+  if (!nomeOk) return;
+
+  const nome = els.accountName.value.trim();
+  const telefone = els.accountPhone.value.trim();
+
+  try {
+    const updatedProfile = {
+      ...state.profile,
+      nome,
+      telefone,
+      email: state.user.email || state.profile?.email || ""
+    };
+
+    await saveClientProfile(state.uid, updatedProfile);
+
+    state.profile = updatedProfile;
+    els.customerName.textContent = nome;
+    setAccountMessage("Nome e telefone atualizados com sucesso.");
+  } catch (err) {
+    console.error("Erro ao atualizar perfil:", err);
+    setAccountMessage("Não foi possível atualizar os dados do perfil.", true);
+  }
+}
+
+async function handleChangeEmail() {
+  if (!state.user || !state.uid || !state.profile) return;
+
+  clearAccountMessage();
+
+  const emailOk = validateEmailField(
+    els.accountEmail,
+    els.accountEmailError,
+    { required: true }
+  );
+  const passwordOk = validatePasswordField(
+    els.accountCurrentPasswordEmail,
+    els.accountCurrentPasswordEmailError,
+    { required: true }
+  );
+
+  if (!emailOk || !passwordOk) return;
+
+  const newEmail = els.accountEmail.value.trim();
+  const currentPassword = els.accountCurrentPasswordEmail.value;
+
+  if (newEmail.toLowerCase() === String(state.user.email || "").toLowerCase()) {
+    setFieldError(
+      els.accountEmail,
+      els.accountEmailError,
+      "Este já é o email atual da tua conta."
+    );
+    return;
+  }
+
+  try {
+    await reauthenticateCurrentUser(currentPassword);
+    await updateEmail(state.user, newEmail);
+
+    const updatedProfile = {
+      ...state.profile,
+      email: newEmail
+    };
+
+    await saveClientProfile(state.uid, updatedProfile);
+
+    state.profile = updatedProfile;
+    els.customerEmail.textContent = newEmail;
+    els.accountCurrentPasswordEmail.value = "";
+    clearFieldState(
+      els.accountCurrentPasswordEmail,
+      els.accountCurrentPasswordEmailError
+    );
+
+    setAccountMessage("Email atualizado com sucesso. Usa o novo email no próximo início de sessão.");
+  } catch (err) {
+    console.error("Erro ao alterar email:", err);
+    setAccountMessage(
+      getFriendlyAuthError(err, "Não foi possível alterar o email."),
+      true
+    );
+  }
+}
+
+async function handleChangePassword() {
+  if (!state.user) return;
+
+  clearAccountMessage();
+
+  const currentOk = validatePasswordField(
+    els.accountCurrentPassword,
+    els.accountCurrentPasswordError,
+    { required: true }
+  );
+
+  const newOk = validatePasswordField(
+    els.accountNewPassword,
+    els.accountNewPasswordError,
+    { required: true }
+  );
+
+  const confirmValue = String(els.accountConfirmPassword?.value || "");
+
+  let confirmOk = true;
+
+  if (!confirmValue) {
+    confirmOk = setFieldError(
+      els.accountConfirmPassword,
+      els.accountConfirmPasswordError,
+      "Repete a nova palavra-passe."
+    );
+  } else if (confirmValue !== els.accountNewPassword.value) {
+    confirmOk = setFieldError(
+      els.accountConfirmPassword,
+      els.accountConfirmPasswordError,
+      "As duas novas palavras-passe não são iguais."
+    );
+  } else {
+    setFieldValid(
+      els.accountConfirmPassword,
+      els.accountConfirmPasswordError
+    );
+  }
+
+  if (!currentOk || !newOk || !confirmOk) return;
+
+  if (els.accountCurrentPassword.value === els.accountNewPassword.value) {
+    setFieldError(
+      els.accountNewPassword,
+      els.accountNewPasswordError,
+      "A nova palavra-passe deve ser diferente da atual."
+    );
+    return;
+  }
+
+  try {
+    await reauthenticateCurrentUser(els.accountCurrentPassword.value);
+    await updatePassword(state.user, els.accountNewPassword.value);
+
+    els.accountCurrentPassword.value = "";
+    els.accountNewPassword.value = "";
+    els.accountConfirmPassword.value = "";
+
+    clearFieldState(
+      els.accountCurrentPassword,
+      els.accountCurrentPasswordError
+    );
+    clearFieldState(
+      els.accountNewPassword,
+      els.accountNewPasswordError
+    );
+    clearFieldState(
+      els.accountConfirmPassword,
+      els.accountConfirmPasswordError
+    );
+
+    setAccountMessage("Palavra-passe atualizada com sucesso.");
+  } catch (err) {
+    console.error("Erro ao alterar palavra-passe:", err);
+    setAccountMessage(
+      getFriendlyAuthError(err, "Não foi possível alterar a palavra-passe."),
+      true
+    );
+  }
+}
+
+async function handleResetPassword() {
+  if (!state.user?.email) return;
+
+  clearAccountMessage();
+
+  try {
+    await sendPasswordResetEmail(auth, state.user.email);
+    setAccountMessage(
+      `Foi enviado um email de recuperação para ${state.user.email}.`
+    );
+  } catch (err) {
+    console.error("Erro ao enviar recuperação de palavra-passe:", err);
+    setAccountMessage(
+      getFriendlyAuthError(
+        err,
+        "Não foi possível enviar o email de recuperação."
+      ),
+      true
+    );
+  }
 }
 
 function setFieldError(inputEl, errorEl, message) {
@@ -614,6 +911,10 @@ async function loadAppData() {
     els.customerName.textContent = state.profile?.nome || "Cliente";
     els.customerEmail.textContent = state.user?.email || "";
 
+    if (els.accountPanel && !els.accountPanel.classList.contains("hidden")) {
+      populateAccountPanel();
+    }
+
     state.items = order?.itens || {};
     state.pickupLocation = order?.localRecolha || "";
     state.notasEncomenda = order?.notasEncomenda || "";
@@ -640,6 +941,10 @@ async function loadAppData() {
     els.customerName.textContent = "Visitante";
     els.customerEmail.textContent = "Inicia sessão para guardar a encomenda";
     els.lastUpdate.textContent = "Sem registo";
+
+    if (els.accountPanel) {
+      hide(els.accountPanel);
+    }
   }
 
   renderPickupOptions(els.pickupLocation, pickupOptions, state.pickupLocation);
@@ -831,6 +1136,62 @@ function bindValidationEvents() {
   els.regName.addEventListener("input", () => {
     clearFieldState(els.regName, els.regNameError);
   });
+
+  els.accountName?.addEventListener("input", () => {
+    clearFieldState(els.accountName, els.accountNameError);
+  });
+
+  els.accountEmail?.addEventListener("input", () => {
+    clearFieldState(els.accountEmail, els.accountEmailError);
+  });
+
+  els.accountCurrentPasswordEmail?.addEventListener("input", () => {
+    clearFieldState(
+      els.accountCurrentPasswordEmail,
+      els.accountCurrentPasswordEmailError
+    );
+  });
+
+  els.accountCurrentPassword?.addEventListener("input", () => {
+    clearFieldState(
+      els.accountCurrentPassword,
+      els.accountCurrentPasswordError
+    );
+  });
+
+  els.accountNewPassword?.addEventListener("input", () => {
+    clearFieldState(els.accountNewPassword, els.accountNewPasswordError);
+  });
+
+  els.accountConfirmPassword?.addEventListener("input", () => {
+    clearFieldState(
+      els.accountConfirmPassword,
+      els.accountConfirmPasswordError
+    );
+  });
+
+  els.accountName?.addEventListener("blur", () => {
+    validateNameField(els.accountName, els.accountNameError);
+  });
+
+  els.accountEmail?.addEventListener("blur", () => {
+    validateEmailField(
+      els.accountEmail,
+      els.accountEmailError,
+      { required: true }
+    );
+  });
+
+  els.accountNewPassword?.addEventListener("blur", () => {
+    const value = String(els.accountNewPassword?.value || "");
+    if (value) {
+      validatePasswordField(
+        els.accountNewPassword,
+        els.accountNewPasswordError,
+        { required: true }
+      );
+    }
+  });
 }
 
 function bindEvents() {
@@ -855,6 +1216,41 @@ function bindEvents() {
 
   els.btnLogout.addEventListener("click", async () => {
     await signOut(auth);
+  });
+
+  els.btnToggleAccount?.addEventListener("click", openAccountPanel);
+  els.btnCloseAccount?.addEventListener("click", closeAccountPanel);
+  els.btnSaveProfile?.addEventListener("click", handleSaveProfile);
+  els.btnChangeEmail?.addEventListener("click", handleChangeEmail);
+  els.btnChangePassword?.addEventListener("click", handleChangePassword);
+  els.btnResetPassword?.addEventListener("click", handleResetPassword);
+
+  els.btnToggleAccountCurrentPasswordEmail?.addEventListener("click", () => {
+    togglePasswordVisibility(
+      els.accountCurrentPasswordEmail,
+      els.btnToggleAccountCurrentPasswordEmail
+    );
+  });
+
+  els.btnToggleAccountCurrentPassword?.addEventListener("click", () => {
+    togglePasswordVisibility(
+      els.accountCurrentPassword,
+      els.btnToggleAccountCurrentPassword
+    );
+  });
+
+  els.btnToggleAccountNewPassword?.addEventListener("click", () => {
+    togglePasswordVisibility(
+      els.accountNewPassword,
+      els.btnToggleAccountNewPassword
+    );
+  });
+
+  els.btnToggleAccountConfirmPassword?.addEventListener("click", () => {
+    togglePasswordVisibility(
+      els.accountConfirmPassword,
+      els.btnToggleAccountConfirmPassword
+    );
   });
 
   els.pickupLocation.addEventListener("change", (e) => {
@@ -891,6 +1287,10 @@ function initAuthObserver() {
     if (!user) {
       state.uid = null;
       state.user = null;
+
+      if (els.accountPanel) {
+        hide(els.accountPanel);
+      }
 
       try {
         await loadAppData();
