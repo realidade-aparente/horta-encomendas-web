@@ -59,9 +59,42 @@
           <button id="btnLogin">Entrar</button>
         </div>
 
-        <div class="auth-switch-row">
-          <span class="hint">Ainda não tens conta?</span>
-          <button id="btnShowRegister" type="button" class="text-button">Novo registo</button>
+        <div class="auth-switch-row auth-switch-row-stacked">
+          <button id="btnShowLoggedOutReset" type="button" class="text-button">
+            Esqueci a palavra-passe
+          </button>
+
+          <div class="auth-switch-row">
+            <span class="hint">Ainda não tens conta?</span>
+            <button id="btnShowRegister" type="button" class="text-button">Novo registo</button>
+          </div>
+        </div>
+
+        <div id="loggedOutResetPanel" class="password-reset-panel hidden">
+          <h3>Recuperar palavra-passe</h3>
+          <p class="hint">
+            Introduz o email da tua conta. Receberás uma mensagem com um link para definires uma nova palavra-passe.
+          </p>
+
+          <div class="form-group">
+            <label for="loggedOutResetEmail">Email</label>
+            <input
+              id="loggedOutResetEmail"
+              type="email"
+              inputmode="email"
+              autocomplete="email"
+              placeholder="Endereço de email da tua conta"
+              aria-describedby="loggedOutResetEmailError"
+            />
+            <p id="loggedOutResetEmailError" class="field-error hidden"></p>
+          </div>
+
+          <div class="auth-actions">
+            <button id="btnSendLoggedOutReset" type="button">Enviar email de recuperação</button>
+            <button id="btnCancelLoggedOutReset" type="button" class="secondary">Cancelar</button>
+          </div>
+
+          <p id="loggedOutResetMessage" class="message"></p>
         </div>
       </div>
 
