@@ -133,6 +133,130 @@
           </div>
           <button id="btnLogout" class="secondary">Sair</button>
         </div>
+
+        <div class="account-entry-row">
+          <button id="btnToggleAccount" type="button" class="secondary">A minha conta</button>
+        </div>
+      </section>
+
+      <section id="accountPanel" class="card hidden">
+        <div class="top-row">
+          <div>
+            <h2>A minha conta</h2>
+            <p class="hint">Atualiza os teus dados de cliente e credenciais de acesso.</p>
+          </div>
+          <button id="btnCloseAccount" type="button" class="secondary">Fechar</button>
+        </div>
+
+        <div class="account-section">
+          <h3>Dados pessoais</h3>
+
+          <div class="form-group">
+            <label for="accountName">Nome</label>
+            <input id="accountName" type="text" autocomplete="name"
+              placeholder="Nome de cliente" aria-describedby="accountNameError" />
+            <p id="accountNameError" class="field-error hidden"></p>
+          </div>
+
+          <div class="form-group">
+            <label for="accountPhone">Telefone</label>
+            <input id="accountPhone" type="tel" autocomplete="tel" placeholder="Opcional" />
+          </div>
+
+          <button id="btnSaveProfile" type="button">Guardar nome e telefone</button>
+        </div>
+
+        <div class="account-section">
+          <h3>Alterar email</h3>
+
+          <div class="form-group">
+            <label for="accountEmail">Novo email</label>
+            <input id="accountEmail" type="email" inputmode="email" autocomplete="email"
+              placeholder="Novo endereço de email"
+              aria-describedby="accountEmailHelp accountEmailError" />
+            <p id="accountEmailHelp" class="hint">
+              O novo email passará a ser usado para entrares na tua conta.
+            </p>
+            <p id="accountEmailError" class="field-error hidden"></p>
+          </div>
+
+          <div class="form-group">
+            <label for="accountCurrentPasswordEmail">Palavra-passe atual</label>
+            <div class="password-field">
+              <input id="accountCurrentPasswordEmail" type="password"
+                autocomplete="current-password" minlength="6" maxlength="10"
+                placeholder="Palavra-passe atual"
+                aria-describedby="accountCurrentPasswordEmailError" />
+              <button id="btnToggleAccountCurrentPasswordEmail" type="button"
+                class="icon-button secondary"
+                aria-label="Mostrar ou esconder palavra-passe atual">👁</button>
+            </div>
+            <p id="accountCurrentPasswordEmailError" class="field-error hidden"></p>
+          </div>
+
+          <button id="btnChangeEmail" type="button">Alterar email</button>
+        </div>
+
+        <div class="account-section">
+          <h3>Alterar palavra-passe</h3>
+
+          <div class="form-group">
+            <label for="accountCurrentPassword">Palavra-passe atual</label>
+            <div class="password-field">
+              <input id="accountCurrentPassword" type="password"
+                autocomplete="current-password" minlength="6" maxlength="10"
+                placeholder="Palavra-passe atual"
+                aria-describedby="accountCurrentPasswordError" />
+              <button id="btnToggleAccountCurrentPassword" type="button"
+                class="icon-button secondary"
+                aria-label="Mostrar ou esconder palavra-passe atual">👁</button>
+            </div>
+            <p id="accountCurrentPasswordError" class="field-error hidden"></p>
+          </div>
+
+          <div class="form-group">
+            <label for="accountNewPassword">Nova palavra-passe / PIN</label>
+            <div class="password-field">
+              <input id="accountNewPassword" type="password" autocomplete="new-password"
+                minlength="6" maxlength="10" placeholder="Entre 6 e 10 caracteres"
+                aria-describedby="accountNewPasswordHelp accountNewPasswordError" />
+              <button id="btnToggleAccountNewPassword" type="button"
+                class="icon-button secondary"
+                aria-label="Mostrar ou esconder nova palavra-passe">👁</button>
+            </div>
+            <p id="accountNewPasswordHelp" class="hint">
+              Entre 6 e 10 caracteres. Aceita números, letras e símbolos do teclado.
+            </p>
+            <p id="accountNewPasswordError" class="field-error hidden"></p>
+          </div>
+
+          <div class="form-group">
+            <label for="accountConfirmPassword">Confirmar nova palavra-passe</label>
+            <div class="password-field">
+              <input id="accountConfirmPassword" type="password" autocomplete="new-password"
+                minlength="6" maxlength="10" placeholder="Repete a nova palavra-passe"
+                aria-describedby="accountConfirmPasswordError" />
+              <button id="btnToggleAccountConfirmPassword" type="button"
+                class="icon-button secondary"
+                aria-label="Mostrar ou esconder confirmação da palavra-passe">👁</button>
+            </div>
+            <p id="accountConfirmPasswordError" class="field-error hidden"></p>
+          </div>
+
+          <button id="btnChangePassword" type="button">Alterar palavra-passe</button>
+        </div>
+
+        <div class="account-section account-section-last">
+          <h3>Esqueceste a palavra-passe?</h3>
+          <p class="hint">
+            Podemos enviar um email para redefinires a palavra-passe da tua conta.
+          </p>
+          <button id="btnResetPassword" type="button" class="secondary">
+            Enviar email de recuperação
+          </button>
+        </div>
+
+        <p id="accountMessage" class="message account-message"></p>
       </section>
 
       <section class="card">
