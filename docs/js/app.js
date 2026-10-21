@@ -5,7 +5,7 @@ import {
   onAuthStateChanged,
   EmailAuthProvider,
   reauthenticateWithCredential,
-  updateEmail,
+  verifyBeforeUpdateEmail,
   updatePassword,
   sendPasswordResetEmail
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
@@ -349,6 +349,8 @@ function getFriendlyAuthError(err, fallback) {
     "auth/requires-recent-login": "Por segurança, volta a iniciar sessão e tenta novamente.",
     "auth/email-already-in-use": "Esse endereço de email já está associado a outra conta.",
     "auth/invalid-email": "O endereço de email não é válido.",
+    "auth/operation-not-allowed": "O Firebase não permitiu esta alteração de email. Tenta novamente ou contacta o administrador.",
+    "auth/email-change-needs-verification": "Por segurança, a alteração do email precisa de ser confirmada através de uma mensagem enviada para o novo endereço.",
     "auth/weak-password": "A nova palavra-passe não cumpre os requisitos mínimos.",
     "auth/too-many-requests": "Foram feitas demasiadas tentativas. Tenta novamente mais tarde.",
     "auth/network-request-failed": "Não foi possível comunicar com o serviço. Verifica a ligação à internet."
@@ -410,6 +412,7 @@ async function handleChangeEmail() {
     els.accountEmailError,
     { required: true }
   );
+
   const passwordOk = validatePasswordField(
     els.accountCurrentPasswordEmail,
     els.accountCurrentPasswordEmailError,
@@ -430,32 +433,52 @@ async function handleChangeEmail() {
     return;
   }
 
+  const button = els.btnChangeEmail;
+  const originalText = button?.textContent || "Alterar email";
+
+  if (button) {
+    button.disabled = true;
+    button.textContent = "A enviar confirmação...";
+  }
+
   try {
+    // O Firebase exige autenticação recente para esta operação.
     await reauthenticateCurrentUser(currentPassword);
-    await updateEmail(state.user, newEmail);
 
-    const updatedProfile = {
-      ...state.profile,
-      email: newEmail
-    };
+    // Fluxo recomendado: o novo endereço só passa a ser o email da conta
+    // depois de o cliente confirmar o link recebido no NOVO email.
+    await verifyBeforeUpdateEmail(state.user, newEmail);
 
-    await saveClientProfile(state.uid, updatedProfile);
-
-    state.profile = updatedProfile;
-    els.customerEmail.textContent = newEmail;
     els.accountCurrentPasswordEmail.value = "";
     clearFieldState(
       els.accountCurrentPasswordEmail,
       els.accountCurrentPasswordEmailError
     );
 
-    setAccountMessage("Email atualizado com sucesso. Usa o novo email no próximo início de sessão.");
-  } catch (err) {
-    console.error("Erro ao alterar email:", err);
     setAccountMessage(
-      getFriendlyAuthError(err, "Não foi possível alterar o email."),
+      `Foi enviado um email de confirmação para ${newEmail}. ` +
+      `Abre essa mensagem e confirma a alteração. Até confirmares, ` +
+      `continua a entrar com ${state.user.email}.`
+    );
+  } catch (err) {
+    console.error(
+      "Erro ao iniciar alteração de email:",
+      err?.code || "(sem código)",
+      err
+    );
+
+    setAccountMessage(
+      getFriendlyAuthError(
+        err,
+        `Não foi possível iniciar a alteração do email${err?.code ? ` (${err.code})` : ""}.`
+      ),
       true
     );
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent = originalText;
+    }
   }
 }
 
@@ -1037,6 +1060,20 @@ async function ensureClientProfile() {
     };
 
     await saveClientProfile(state.uid, profile);
+  } else {
+    const authEmail = String(state.user.email || "").trim();
+    const profileEmail = String(profile.email || "").trim();
+
+    // Depois de o cliente confirmar uma alteração de email no Firebase,
+    // sincroniza automaticamente o mesmo endereço no perfil da RTDB.
+    if (authEmail && authEmail.toLowerCase() !== profileEmail.toLowerCase()) {
+      profile = {
+        ...profile,
+        email: authEmail
+      };
+
+      await saveClientProfile(state.uid, profile);
+    }
   }
 
   return profile;
