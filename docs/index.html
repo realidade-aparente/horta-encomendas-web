@@ -137,6 +137,32 @@
         </div>
 
         <div class="form-group">
+          <label for="registerPasswordConfirm">Confirmar palavra-passe / PIN</label>
+          <div class="password-field">
+            <input
+              id="registerPasswordConfirm"
+              type="password"
+              autocomplete="new-password"
+              minlength="6"
+              maxlength="10"
+              pattern="[A-Za-zÀ-ÿ0-9 !&quot;#$%&'()*+,\-./:;<=>?@[\\\]^_`{|}~]+"
+              placeholder="Repete a palavra-passe"
+              aria-describedby="registerPasswordConfirmHelp registerPasswordConfirmError"
+            />
+            <button
+              id="btnToggleRegisterPasswordConfirm"
+              type="button"
+              class="icon-button secondary"
+              aria-label="Mostrar ou esconder confirmação da palavra-passe"
+            >👁</button>
+          </div>
+          <p id="registerPasswordConfirmHelp" class="hint">
+            Repete exatamente a palavra-passe introduzida acima.
+          </p>
+          <p id="registerPasswordConfirmError" class="field-error hidden"></p>
+        </div>
+
+        <div class="form-group">
           <label for="regName">Nome</label>
           <input id="regName" type="text" placeholder="Nome de cliente" aria-describedby="regNameError" />
           <p id="regNameError" class="field-error hidden"></p>
