@@ -89,15 +89,18 @@ const els = {
   loginPassword: document.getElementById("loginPassword"),
   registerEmail: document.getElementById("registerEmail"),
   registerPassword: document.getElementById("registerPassword"),
+  registerPasswordConfirm: document.getElementById("registerPasswordConfirm"),
 
   loginEmailError: document.getElementById("loginEmailError"),
   loginPasswordError: document.getElementById("loginPasswordError"),
   registerEmailError: document.getElementById("registerEmailError"),
   registerPasswordError: document.getElementById("registerPasswordError"),
+  registerPasswordConfirmError: document.getElementById("registerPasswordConfirmError"),
   regNameError: document.getElementById("regNameError"),
 
   btnToggleLoginPassword: document.getElementById("btnToggleLoginPassword"),
   btnToggleRegisterPassword: document.getElementById("btnToggleRegisterPassword"),
+  btnToggleRegisterPasswordConfirm: document.getElementById("btnToggleRegisterPasswordConfirm"),
   btnShowRegister: document.getElementById("btnShowRegister"),
   btnShowLogin: document.getElementById("btnShowLogin"),
 
@@ -244,23 +247,41 @@ async function handleLoggedOutPasswordReset() {
   if (!emailOk) return;
 
   const email = els.loggedOutResetEmail.value.trim();
+  const button = els.btnSendLoggedOutReset;
+  const originalText = button?.textContent || "Enviar email de recuperação";
+
+  if (button) {
+    button.disabled = true;
+    button.textContent = "A enviar...";
+  }
 
   try {
     await sendPasswordResetEmail(auth, email);
 
+    console.info("Pedido de recuperação aceite pelo Firebase para:", email);
+
     setLoggedOutResetMessage(
-      `Se existir uma conta associada a ${email}, receberás um email com as instruções para redefinir a palavra-passe.`
+      `Pedido enviado. Se existir uma conta associada a ${email}, o Firebase enviará um email com as instruções. Verifica também a pasta Spam/Lixo e aguarda alguns minutos.`
     );
   } catch (err) {
-    console.error("Erro ao enviar recuperação de palavra-passe:", err);
+    console.error(
+      "Erro ao enviar recuperação de palavra-passe:",
+      err?.code || "(sem código)",
+      err
+    );
 
     setLoggedOutResetMessage(
       getFriendlyAuthError(
         err,
-        "Não foi possível enviar o email de recuperação. Tenta novamente."
+        `Não foi possível enviar o email de recuperação${err?.code ? ` (${err.code})` : ""}.`
       ),
       true
     );
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent = originalText;
+    }
   }
 }
 
@@ -525,20 +546,44 @@ async function handleResetPassword() {
 
   clearAccountMessage();
 
+  const button = els.btnResetPassword;
+  const originalText = button?.textContent || "Enviar email de recuperação";
+
+  if (button) {
+    button.disabled = true;
+    button.textContent = "A enviar...";
+  }
+
   try {
     await sendPasswordResetEmail(auth, state.user.email);
+
+    console.info(
+      "Pedido de recuperação aceite pelo Firebase para:",
+      state.user.email
+    );
+
     setAccountMessage(
-      `Foi enviado um email de recuperação para ${state.user.email}.`
+      `Pedido enviado para ${state.user.email}. Verifica também a pasta Spam/Lixo e aguarda alguns minutos.`
     );
   } catch (err) {
-    console.error("Erro ao enviar recuperação de palavra-passe:", err);
+    console.error(
+      "Erro ao enviar recuperação de palavra-passe:",
+      err?.code || "(sem código)",
+      err
+    );
+
     setAccountMessage(
       getFriendlyAuthError(
         err,
-        "Não foi possível enviar o email de recuperação."
+        `Não foi possível enviar o email de recuperação${err?.code ? ` (${err.code})` : ""}.`
       ),
       true
     );
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent = originalText;
+    }
   }
 }
 
@@ -572,6 +617,7 @@ function clearAllAuthFieldStates() {
   clearFieldState(els.loginPassword, els.loginPasswordError);
   clearFieldState(els.registerEmail, els.registerEmailError);
   clearFieldState(els.registerPassword, els.registerPasswordError);
+  clearFieldState(els.registerPasswordConfirm, els.registerPasswordConfirmError);
   clearFieldState(els.regName, els.regNameError);
 }
 
@@ -664,12 +710,39 @@ function validateLoginForm() {
   return emailOk && passwordOk;
 }
 
+function validateRegisterPasswordConfirmation() {
+  const password = String(els.registerPassword?.value || "");
+  const confirmation = String(els.registerPasswordConfirm?.value || "");
+
+  if (!confirmation) {
+    return setFieldError(
+      els.registerPasswordConfirm,
+      els.registerPasswordConfirmError,
+      "Repete a palavra-passe para confirmar."
+    );
+  }
+
+  if (confirmation !== password) {
+    return setFieldError(
+      els.registerPasswordConfirm,
+      els.registerPasswordConfirmError,
+      "As duas palavras-passe não são iguais."
+    );
+  }
+
+  return setFieldValid(
+    els.registerPasswordConfirm,
+    els.registerPasswordConfirmError
+  );
+}
+
 function validateRegisterForm() {
   clearAuthMessage();
   const emailOk = validateEmailField(els.registerEmail, els.registerEmailError);
   const passwordOk = validatePasswordField(els.registerPassword, els.registerPasswordError);
+  const confirmationOk = validateRegisterPasswordConfirmation();
   const nameOk = validateNameField(els.regName, els.regNameError);
-  return emailOk && passwordOk && nameOk;
+  return emailOk && passwordOk && confirmationOk && nameOk;
 }
 
 function escapeHtml(value = "") {
@@ -1196,6 +1269,14 @@ function bindValidationEvents() {
 
   els.registerPassword.addEventListener("blur", () => {
     validatePasswordField(els.registerPassword, els.registerPasswordError, { required: true });
+
+    if (String(els.registerPasswordConfirm?.value || "")) {
+      validateRegisterPasswordConfirmation();
+    }
+  });
+
+  els.registerPasswordConfirm?.addEventListener("blur", () => {
+    validateRegisterPasswordConfirmation();
   });
 
   els.regName.addEventListener("blur", () => {
@@ -1216,6 +1297,17 @@ function bindValidationEvents() {
 
   els.registerPassword.addEventListener("input", () => {
     clearFieldState(els.registerPassword, els.registerPasswordError);
+    clearFieldState(
+      els.registerPasswordConfirm,
+      els.registerPasswordConfirmError
+    );
+  });
+
+  els.registerPasswordConfirm?.addEventListener("input", () => {
+    clearFieldState(
+      els.registerPasswordConfirm,
+      els.registerPasswordConfirmError
+    );
   });
 
   els.regName.addEventListener("input", () => {
@@ -1334,6 +1426,13 @@ function bindEvents() {
 
   els.btnToggleRegisterPassword.addEventListener("click", () => {
     togglePasswordVisibility(els.registerPassword, els.btnToggleRegisterPassword);
+  });
+
+  els.btnToggleRegisterPasswordConfirm?.addEventListener("click", () => {
+    togglePasswordVisibility(
+      els.registerPasswordConfirm,
+      els.btnToggleRegisterPasswordConfirm
+    );
   });
 
   els.btnLogout.addEventListener("click", async () => {
