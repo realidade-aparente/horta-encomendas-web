@@ -16,7 +16,8 @@ import {
   getClientProfile,
   saveClientProfile,
   getOrder,
-  saveOrder
+  saveOrder,
+  patchOrder
 } from "./db.js";
 
 import {
@@ -1101,7 +1102,28 @@ async function loadAppData() {
 
   if (state.user && state.uid) {
     state.profile = await ensureClientProfile();
-    const order = await getOrder(state.weekId, state.uid);
+    let order = await getOrder(state.weekId, state.uid);
+
+    const authEmail = String(state.user?.email || "").trim();
+    const orderEmail = String(order?.email || "").trim();
+
+    // Se já existir uma encomenda nesta semana e o cliente entretanto
+    // tiver alterado o email no Firebase Authentication, sincroniza apenas
+    // o campo email dessa encomenda. O UID e todos os restantes dados mantêm-se.
+    if (
+      order &&
+      authEmail &&
+      authEmail.toLowerCase() !== orderEmail.toLowerCase()
+    ) {
+      await patchOrder(state.weekId, state.uid, {
+        email: authEmail
+      });
+
+      order = {
+        ...order,
+        email: authEmail
+      };
+    }
 
     els.customerName.textContent = state.profile?.nome || "Cliente";
     els.customerEmail.textContent = state.user?.email || "";
