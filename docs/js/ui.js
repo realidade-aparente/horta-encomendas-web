@@ -11,8 +11,22 @@ export function hide(el) {
 }
 
 export function setWeekStatus(el, estado) {
-  el.textContent = estado === "aberta" ? "Encomendas abertas" : "Encomendas encerradas";
-  el.style.background = estado === "aberta" ? "#dff3e2" : "#f3dfdf";
+  if (!el) return;
+
+  if (estado === "aberta" || estado === "normal") {
+    el.textContent = "Encomendas abertas";
+    el.style.background = "#dff3e2";
+    return;
+  }
+
+  if (estado === "condicionada" || estado === "conditional") {
+    el.textContent = "Encomendas condicionadas";
+    el.style.background = "#fff0c2";
+    return;
+  }
+
+  el.textContent = "Encomendas encerradas";
+  el.style.background = "#f3dfdf";
 }
 
 export function renderPickupOptions(selectEl, options = [], selectedValue = "") {
