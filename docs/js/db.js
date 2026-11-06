@@ -55,3 +55,21 @@ export async function patchOrder(weekId, uid, payload) {
 export async function deleteOrder(weekId, uid) {
   await set(ref(db, `semanas/${weekId}/encomendas/${uid}`), null);
 }
+
+export async function getConditionalOrder(weekId, uid) {
+  const snap = await get(ref(db, `semanas/${weekId}/encomendasCondicionadas/${uid}`));
+  return snap.exists() ? snap.val() : null;
+}
+
+export async function saveConditionalOrder(weekId, uid, payload) {
+  await set(ref(db, `semanas/${weekId}/encomendasCondicionadas/${uid}`), payload);
+}
+
+export async function patchConditionalOrder(weekId, uid, payload) {
+  await update(ref(db, `semanas/${weekId}/encomendasCondicionadas/${uid}`), payload);
+}
+
+export async function deleteConditionalOrder(weekId, uid) {
+  await set(ref(db, `semanas/${weekId}/encomendasCondicionadas/${uid}`), null);
+}
+
