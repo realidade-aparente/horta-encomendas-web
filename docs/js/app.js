@@ -1300,7 +1300,15 @@ async function loadAppData() {
 
     const [normalOrder, conditionalOrder] = await Promise.all([
       getOrder(state.weekId, state.uid),
-      getConditionalOrder(state.weekId, state.uid)
+      getConditionalOrder(state.weekId, state.uid).catch((err) => {
+        console.warn(
+          "Não foi possível ler a encomenda condicionada. " +
+          "Verifica as regras da Realtime Database para encomendasCondicionadas:",
+          err?.code || "(sem código)",
+          err
+        );
+        return null;
+      })
     ]);
 
     state.orderType = getActiveOrderType(
