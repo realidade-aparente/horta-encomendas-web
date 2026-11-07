@@ -92,10 +92,10 @@ const PICKUP_LOCATIONS_CONDITIONAL = [
 
 const ORDER_WINDOW_NOTICE_NORMAL =
   "Há dois períodos de encomendas: 1.º período — segunda-feira às 08:00 até terça-feira às 20:00. " +
-  "2.º período condicionado — terça-feira às 20:00 até quinta-feira às 20:00; nesse período só ficam disponíveis as recolhas de sexta-feira e sábado.";
+  "2.º período condicionado — terça-feira às 20:01 até quinta-feira às 20:00; nesse período só ficam disponíveis as recolhas de sexta-feira e sábado.";
 
 const ORDER_WINDOW_NOTICE_CONDITIONAL =
-  "2.º período de encomendas condicionadas: terça-feira às 20:00 até quinta-feira às 20:00. " +
+  "2.º período de encomendas condicionadas: terça-feira às 20:01 até quinta-feira às 20:00. " +
   "Neste período só estão disponíveis as recolhas de sexta-feira e sábado.";
 
 function getPortugalWeekdayAndTime(date = new Date()) {
@@ -131,20 +131,46 @@ function getPortugalWeekdayAndTime(date = new Date()) {
   };
 }
 
-function getScheduledOrderMode(date = new Date()) {
+function getDisplayedOrderType(date = new Date()) {
   const { day, hour, minute } = getPortugalWeekdayAndTime(date);
   const minutes = hour * 60 + minute;
 
-  // 1.º período: segunda 08:00 <= agora < terça 20:00
-  if (day === 1 && minutes >= 8 * 60) return "normal";
-  if (day === 2 && minutes < 20 * 60) return "normal";
+  // Qual encomenda é apresentada:
+  // Domingo 00:00 -> terça 20:00 (inclusive): normal
+  // Terça 20:01 -> domingo 23:59: condicionada
+  if (day === 0 || day === 1) return "normal";
+  if (day === 2 && minutes <= 20 * 60) return "normal";
 
-  // 2.º período: terça 20:00 <= agora < quinta 20:00
-  if (day === 2 && minutes >= 20 * 60) return "conditional";
+  return "conditional";
+}
+
+function getAutomaticOrderWindow(date = new Date()) {
+  const { day, hour, minute } = getPortugalWeekdayAndTime(date);
+  const minutes = hour * 60 + minute;
+
+  // Janela automática do 1.º período:
+  // segunda 08:00 -> terça 20:00 (inclusive)
+  if (day === 1 && minutes >= 8 * 60) return "normal";
+  if (day === 2 && minutes <= 20 * 60) return "normal";
+
+  // Janela automática do 2.º período:
+  // terça 20:01 -> quinta 20:00 (inclusive)
+  if (day === 2 && minutes > 20 * 60) return "conditional";
   if (day === 3) return "conditional";
-  if (day === 4 && minutes < 20 * 60) return "conditional";
+  if (day === 4 && minutes <= 20 * 60) return "conditional";
 
   return "closed";
+}
+
+function getEffectiveOrderWindow(manualState, displayedOrderType, date = new Date()) {
+  if (manualState === "fechada") return "closed";
+
+  if (manualState === "aberta") {
+    return displayedOrderType;
+  }
+
+  // "auto" (e também qualquer valor inesperado) segue o relógio.
+  return getAutomaticOrderWindow(date);
 }
 
 function setOperationalStatus(mode) {
@@ -213,23 +239,6 @@ function includeSelectedPickup(options, selectedValue) {
   }
 
   return result;
-}
-
-function getMostRecentOrderType(normalOrder, conditionalOrder) {
-  if (normalOrder && !conditionalOrder) return "normal";
-  if (conditionalOrder && !normalOrder) return "conditional";
-  if (!normalOrder && !conditionalOrder) return "normal";
-
-  const normalTime = Date.parse(normalOrder?.ultimaAtualizacao || "") || 0;
-  const conditionalTime = Date.parse(conditionalOrder?.ultimaAtualizacao || "") || 0;
-
-  return conditionalTime > normalTime ? "conditional" : "normal";
-}
-
-function getActiveOrderType(scheduledMode, normalOrder, conditionalOrder) {
-  if (scheduledMode === "normal") return "normal";
-  if (scheduledMode === "conditional") return "conditional";
-  return getMostRecentOrderType(normalOrder, conditionalOrder);
 }
 
 async function getOrderForType(orderType, weekId, uid) {
@@ -368,7 +377,7 @@ const state = {
   items: {},
   pickupLocation: "",
   notasEncomenda: "",
-  scheduledMode: "closed",
+  displayedOrderType: "normal",
   orderWindow: "closed",
   orderType: "normal",
   canEdit: false
@@ -1279,14 +1288,23 @@ async function loadAppData() {
 
   els.weekLabel.textContent = currentWeek.weekLabel;
 
-  state.scheduledMode = getScheduledOrderMode();
+  state.displayedOrderType = getDisplayedOrderType();
 
-  const manualOpen = state.weekData?.estado === "aberta";
-  state.orderWindow = manualOpen ? state.scheduledMode : "closed";
+  const manualState = String(state.weekData?.estado || "auto").toLowerCase();
+  state.orderWindow = getEffectiveOrderWindow(
+    manualState,
+    state.displayedOrderType
+  );
   state.canEdit = !!state.user && state.orderWindow !== "closed";
 
-  setOperationalStatus(state.orderWindow);
-  updateOrderWindowNotice(state.orderWindow);
+  const visualMode = state.canEdit
+    ? state.displayedOrderType
+    : "closed";
+
+  setOperationalStatus(visualMode);
+  updateOrderWindowNotice(
+    state.canEdit ? state.displayedOrderType : "closed"
+  );
 
   state.products = buildWeeklyCatalog(
     state.weekData?.produtosGerais || {},
@@ -1311,11 +1329,9 @@ async function loadAppData() {
       })
     ]);
 
-    state.orderType = getActiveOrderType(
-      state.scheduledMode,
-      normalOrder,
-      conditionalOrder
-    );
+    // A encomenda apresentada depende apenas do horário atual.
+    // O estado manual (aberta/fechada/auto) controla apenas a edição.
+    state.orderType = state.displayedOrderType;
 
     let order =
       state.orderType === "conditional"
@@ -1373,10 +1389,7 @@ async function loadAppData() {
     state.items = {};
     state.pickupLocation = "";
     state.notasEncomenda = "";
-    state.orderType =
-      state.scheduledMode === "conditional"
-        ? "conditional"
-        : "normal";
+    state.orderType = state.displayedOrderType;
 
     els.orderNotes.value = "";
 
