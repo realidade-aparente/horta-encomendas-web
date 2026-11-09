@@ -17,10 +17,7 @@ import {
   saveClientProfile,
   getOrder,
   saveOrder,
-  patchOrder,
-  getConditionalOrder,
-  saveConditionalOrder,
-  patchConditionalOrder
+  patchOrder
 } from "./db.js";
 
 import {
@@ -72,198 +69,6 @@ const PASSWORD_MIN_LENGTH = 6;
 const PASSWORD_MAX_LENGTH = 10;
 const PASSWORD_ALLOWED_REGEX = /^[A-Za-zÀ-ÿ0-9 !"#$%&'()*+,\-./:;<=>?@[\\\]^_`{|}~]+$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-const PICKUP_FRIDAY = "Na quinta de produção – (sexta-feira)";
-const PICKUP_SATURDAY = "No mercado de rua biológico – (sábado)";
-
-const PICKUP_LOCATIONS_NORMAL = [
-  "Na Quinta do Paraíso – (quarta-feira)",
-  "Na Verdizela – (quarta-feira)",
-  "Em Quinta do Conde – (quarta-feira)",
-  "Em local alternativo combinado – (quinta-feira)",
-  PICKUP_FRIDAY,
-  PICKUP_SATURDAY
-];
-
-const PICKUP_LOCATIONS_CONDITIONAL = [
-  PICKUP_FRIDAY,
-  PICKUP_SATURDAY
-];
-
-const ORDER_WINDOW_NOTICE_NORMAL =
-  "Há dois períodos de encomendas: 1.º período — segunda-feira às 08:00 até terça-feira às 20:00. " +
-  "2.º período condicionado — terça-feira às 20:01 até quinta-feira às 20:00; nesse período só ficam disponíveis as recolhas de sexta-feira e sábado.";
-
-const ORDER_WINDOW_NOTICE_CONDITIONAL =
-  "2.º período de encomendas condicionadas: terça-feira às 20:01 até quinta-feira às 20:00. " +
-  "Neste período só estão disponíveis as recolhas de sexta-feira e sábado.";
-
-function getPortugalWeekdayAndTime(date = new Date()) {
-  const formatter = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Europe/Lisbon",
-    weekday: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23"
-  });
-
-  const parts = formatter.formatToParts(date);
-  const values = Object.fromEntries(
-    parts
-      .filter((part) => part.type !== "literal")
-      .map((part) => [part.type, part.value])
-  );
-
-  const weekdayMap = {
-    Mon: 1,
-    Tue: 2,
-    Wed: 3,
-    Thu: 4,
-    Fri: 5,
-    Sat: 6,
-    Sun: 0
-  };
-
-  return {
-    day: weekdayMap[values.weekday],
-    hour: Number(values.hour),
-    minute: Number(values.minute)
-  };
-}
-
-function getDisplayedOrderType(date = new Date()) {
-  const { day, hour, minute } = getPortugalWeekdayAndTime(date);
-  const minutes = hour * 60 + minute;
-
-  // Qual encomenda é apresentada:
-  // Domingo 00:00 -> terça 20:00 (inclusive): normal
-  // Terça 20:01 -> domingo 23:59: condicionada
-  if (day === 0 || day === 1) return "normal";
-  if (day === 2 && minutes <= 20 * 60) return "normal";
-
-  return "conditional";
-}
-
-function getAutomaticOrderWindow(date = new Date()) {
-  const { day, hour, minute } = getPortugalWeekdayAndTime(date);
-  const minutes = hour * 60 + minute;
-
-  // Janela automática do 1.º período:
-  // segunda 08:00 -> terça 20:00 (inclusive)
-  if (day === 1 && minutes >= 8 * 60) return "normal";
-  if (day === 2 && minutes <= 20 * 60) return "normal";
-
-  // Janela automática do 2.º período:
-  // terça 20:01 -> quinta 20:00 (inclusive)
-  if (day === 2 && minutes > 20 * 60) return "conditional";
-  if (day === 3) return "conditional";
-  if (day === 4 && minutes <= 20 * 60) return "conditional";
-
-  return "closed";
-}
-
-function getEffectiveOrderWindow(manualState, displayedOrderType, date = new Date()) {
-  if (manualState === "fechada") return "closed";
-
-  if (manualState === "aberta") {
-    return displayedOrderType;
-  }
-
-  // "auto" (e também qualquer valor inesperado) segue o relógio.
-  return getAutomaticOrderWindow(date);
-}
-
-function setOperationalStatus(mode) {
-  if (!els.weekStatus) return;
-
-  if (mode === "normal") {
-    els.weekStatus.textContent = "Encomendas abertas";
-    els.weekStatus.style.background = "#dff3e2";
-    return;
-  }
-
-  if (mode === "conditional") {
-    els.weekStatus.textContent = "Encomendas condicionadas";
-    els.weekStatus.style.background = "#fff0c2";
-    return;
-  }
-
-  els.weekStatus.textContent = "Encomendas encerradas";
-  els.weekStatus.style.background = "#f3dfdf";
-}
-
-function ensureOrderWindowNotice() {
-  let notice = document.getElementById("orderWindowNotice");
-
-  if (!notice && els.weekStatus?.parentElement) {
-    notice = document.createElement("div");
-    notice.id = "orderWindowNotice";
-    notice.className = "order-window-notice hidden";
-    els.weekStatus.insertAdjacentElement("afterend", notice);
-  }
-
-  return notice;
-}
-
-function updateOrderWindowNotice(mode) {
-  const notice = ensureOrderWindowNotice();
-  if (!notice) return;
-
-  if (mode === "normal") {
-    notice.textContent = ORDER_WINDOW_NOTICE_NORMAL;
-    notice.classList.remove("hidden");
-    return;
-  }
-
-  if (mode === "conditional") {
-    notice.textContent = ORDER_WINDOW_NOTICE_CONDITIONAL;
-    notice.classList.remove("hidden");
-    return;
-  }
-
-  notice.textContent = "";
-  notice.classList.add("hidden");
-}
-
-function getPickupOptionsForOrderType(orderType) {
-  return orderType === "conditional"
-    ? [...PICKUP_LOCATIONS_CONDITIONAL]
-    : [...PICKUP_LOCATIONS_NORMAL];
-}
-
-function includeSelectedPickup(options, selectedValue) {
-  const result = [...options];
-
-  if (selectedValue && !result.includes(selectedValue)) {
-    result.push(selectedValue);
-  }
-
-  return result;
-}
-
-async function getOrderForType(orderType, weekId, uid) {
-  return orderType === "conditional"
-    ? getConditionalOrder(weekId, uid)
-    : getOrder(weekId, uid);
-}
-
-async function saveOrderForType(orderType, weekId, uid, payload) {
-  if (orderType === "conditional") {
-    await saveConditionalOrder(weekId, uid, payload);
-    return;
-  }
-
-  await saveOrder(weekId, uid, payload);
-}
-
-async function patchOrderForType(orderType, weekId, uid, payload) {
-  if (orderType === "conditional") {
-    await patchConditionalOrder(weekId, uid, payload);
-    return;
-  }
-
-  await patchOrder(weekId, uid, payload);
-}
 
 function initEmailJS() {
   if (window.emailjs) {
@@ -376,11 +181,7 @@ const state = {
   products: [],
   items: {},
   pickupLocation: "",
-  notasEncomenda: "",
-  displayedOrderType: "normal",
-  orderWindow: "closed",
-  orderType: "normal",
-  canEdit: false
+  notasEncomenda: ""
 };
 
 function setMessage(msg, isError = false) {
@@ -1107,7 +908,7 @@ function renderAllProducts() {
     container: els.productsList,
     products: state.products,
     items: state.items,
-    isClosed: !state.canEdit,
+    isClosed: state.weekData?.estado !== "aberta" || !state.user,
     onMinus: (productId) => {
       const product = getProductById(productId);
       const current = Number(state.items[productId]?.quantidade || 0);
@@ -1230,7 +1031,6 @@ function buildOrderPayload(submitState = "submetida") {
     email: state.user.email,
     nomeCliente: String(state.profile?.nome || "").trim(),
     origem: "web",
-    tipoEncomenda: state.orderType === "conditional" ? "condicionada" : "normal",
     estado: submitState,
     ultimaAtualizacao: new Date().toISOString(),
     localRecolha: state.pickupLocation || "",
@@ -1287,72 +1087,37 @@ async function loadAppData() {
   state.weekData = await getWeekData(state.weekId);
 
   els.weekLabel.textContent = currentWeek.weekLabel;
-
-  state.displayedOrderType = getDisplayedOrderType();
-
-  const manualState = String(state.weekData?.estado || "auto").toLowerCase();
-  state.orderWindow = getEffectiveOrderWindow(
-    manualState,
-    state.displayedOrderType
-  );
-  state.canEdit = !!state.user && state.orderWindow !== "closed";
-
-  const visualMode = state.canEdit
-    ? state.displayedOrderType
-    : "closed";
-
-  setOperationalStatus(visualMode);
-  updateOrderWindowNotice(
-    state.canEdit ? state.displayedOrderType : "closed"
-  );
+  setWeekStatus(els.weekStatus, state.weekData?.estado || "fechada");
 
   state.products = buildWeeklyCatalog(
     state.weekData?.produtosGerais || {},
     state.weekData?.produtosSemana || {}
   );
 
-  let pickupOptions = [];
+  const pickupOptions = state.weekData?.locaisRecolha || [
+    "Quinta",
+    "Mercado local",
+    "Entrega combinada"
+  ];
 
   if (state.user && state.uid) {
     state.profile = await ensureClientProfile();
-
-    const [normalOrder, conditionalOrder] = await Promise.all([
-      getOrder(state.weekId, state.uid),
-      getConditionalOrder(state.weekId, state.uid).catch((err) => {
-        console.warn(
-          "Não foi possível ler a encomenda condicionada. " +
-          "Verifica as regras da Realtime Database para encomendasCondicionadas:",
-          err?.code || "(sem código)",
-          err
-        );
-        return null;
-      })
-    ]);
-
-    // A encomenda apresentada depende apenas do horário atual.
-    // O estado manual (aberta/fechada/auto) controla apenas a edição.
-    state.orderType = state.displayedOrderType;
-
-    let order =
-      state.orderType === "conditional"
-        ? conditionalOrder
-        : normalOrder;
+    let order = await getOrder(state.weekId, state.uid);
 
     const authEmail = String(state.user?.email || "").trim();
     const orderEmail = String(order?.email || "").trim();
 
-    // Mantém o email da encomenda ativa sincronizado com o Firebase Auth.
+    // Se já existir uma encomenda nesta semana e o cliente entretanto
+    // tiver alterado o email no Firebase Authentication, sincroniza apenas
+    // o campo email dessa encomenda. O UID e todos os restantes dados mantêm-se.
     if (
       order &&
       authEmail &&
       authEmail.toLowerCase() !== orderEmail.toLowerCase()
     ) {
-      await patchOrderForType(
-        state.orderType,
-        state.weekId,
-        state.uid,
-        { email: authEmail }
-      );
+      await patchOrder(state.weekId, state.uid, {
+        email: authEmail
+      });
 
       order = {
         ...order,
@@ -1379,18 +1144,11 @@ async function loadAppData() {
     els.lastUpdate.textContent = order?.ultimaAtualizacao
       ? new Date(order.ultimaAtualizacao).toLocaleString("pt-PT")
       : "Sem registo";
-
-    pickupOptions = includeSelectedPickup(
-      getPickupOptionsForOrderType(state.orderType),
-      state.pickupLocation
-    );
   } else {
     state.profile = null;
     state.items = {};
     state.pickupLocation = "";
     state.notasEncomenda = "";
-    state.orderType = state.displayedOrderType;
-
     els.orderNotes.value = "";
 
     if (els.orderNotesCounter) {
@@ -1398,27 +1156,20 @@ async function loadAppData() {
     }
 
     els.customerName.textContent = "Visitante";
-    els.customerEmail.textContent =
-      "Inicia sessão para criar uma nova encomenda ou editar e guardar uma encomenda existente";
+    els.customerEmail.textContent = "Inicia sessão para criar uma nova encomenda ou editar e guardar uma encomenda existente";
     els.lastUpdate.textContent = "Sem registo";
 
     if (els.accountPanel) {
       hide(els.accountPanel);
     }
-
-    pickupOptions = getPickupOptionsForOrderType(state.orderType);
   }
 
-  renderPickupOptions(
-    els.pickupLocation,
-    pickupOptions,
-    state.pickupLocation
-  );
+  renderPickupOptions(els.pickupLocation, pickupOptions, state.pickupLocation);
 
-  els.pickupLocation.disabled = !state.canEdit;
-  els.orderNotes.disabled = !state.canEdit;
+  els.pickupLocation.disabled = !state.user || state.weekData?.estado !== "aberta";
+  els.orderNotes.disabled = !state.user || state.weekData?.estado !== "aberta";
 
-  if (state.orderWindow === "closed") {
+  if (state.weekData?.estado !== "aberta") {
     show(els.secClosed);
   } else {
     hide(els.secClosed);
@@ -1509,11 +1260,6 @@ async function handleSave(submitState = "submetida") {
     return;
   }
 
-  if (!state.canEdit || state.orderWindow === "closed") {
-    alert("As encomendas estão encerradas neste momento.");
-    return;
-  }
-
   if (!state.profile?.nome || !String(state.profile.nome).trim()) {
     alert("O perfil deste cliente está incompleto. Termina sessão e volta a entrar.");
     return;
@@ -1526,59 +1272,27 @@ async function handleSave(submitState = "submetida") {
     return;
   }
 
-  const allowedPickups = getPickupOptionsForOrderType(state.orderType);
-
-  if (!allowedPickups.includes(state.pickupLocation)) {
-    alert(
-      state.orderType === "conditional"
-        ? "Neste período só podes escolher um dos locais de recolha de sexta-feira ou sábado."
-        : "Escolhe um local de recolha válido para este período."
-    );
-    return;
-  }
-
-  const previousOrder = await getOrderForType(
-    state.orderType,
-    state.weekId,
-    state.uid
-  );
-
+  const previousOrder = await getOrder(state.weekId, state.uid);
   const isUpdate = !!previousOrder;
-  const payload = buildOrderPayload(submitState);
 
-  await saveOrderForType(
-    state.orderType,
-    state.weekId,
-    state.uid,
-    payload
-  );
+  const payload = buildOrderPayload(submitState);
+  await saveOrder(state.weekId, state.uid, payload);
 
   if (submitState === "submetida") {
     try {
       await sendClientConfirmationEmail(payload, isUpdate);
     } catch (err) {
       console.error("Erro ao enviar email:", err);
-      alert(
-        "A encomenda foi submetida, mas houve um erro ao enviar o email de confirmação."
-      );
+      alert("A encomenda foi submetida, mas houve um erro ao enviar o email de confirmação.");
     }
   }
 
-  els.lastUpdate.textContent =
-    new Date(payload.ultimaAtualizacao).toLocaleString("pt-PT");
+  els.lastUpdate.textContent = new Date(payload.ultimaAtualizacao).toLocaleString("pt-PT");
 
   if (submitState === "rascunho") {
-    alert(
-      state.orderType === "conditional"
-        ? "Rascunho da encomenda condicionada guardado com sucesso."
-        : "Rascunho guardado com sucesso."
-    );
+    alert("Rascunho guardado com sucesso.");
   } else {
-    alert(
-      state.orderType === "conditional"
-        ? "Encomenda condicionada submetida com sucesso. Foi enviado um email de confirmação."
-        : "Encomenda submetida com sucesso. Foi enviado um email de confirmação."
-    );
+    alert("Encomenda submetida com sucesso. Foi enviado um email de confirmação.");
   }
 }
 
